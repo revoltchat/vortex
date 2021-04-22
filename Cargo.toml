@@ -1,0 +1,12 @@
+[package]
+name = "voso"
+description = "Voso is a Rust WebRTC server using mediasoup, acting as a beta audio/voice relay for Revolt"
+version = "0.3.0-alpha.1"
+authors = ["Martin Loffler <me@fatalerrorcoded.eu>"]
+edition = "2018"
+repository = "https://gitlab.insrt.uk/revolt/voso"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
