@@ -1080,6 +1080,7 @@ version = "0.3.0-alpha.1"
 dependencies = [
  "dotenv",
  "env_logger",
+ "lazy_static",
  "log",
  "tokio",
  "warp",
