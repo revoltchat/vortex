@@ -10,3 +10,9 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenv = "0.15.0"
+log = "0.4.14"
+env_logger = "0.8.3"
+
+tokio = { version = "1.4.0", features = ["full"] }
+warp = "0.3.1"
