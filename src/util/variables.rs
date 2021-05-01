@@ -1,8 +1,10 @@
 use std::env;
+use std::net::SocketAddr;
 
 lazy_static! {
-    pub static ref HTTP_HOST: String =
-        env::var("HTTP_HOST").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
+    pub static ref HTTP_HOST: SocketAddr =
+        env::var("HTTP_HOST").unwrap_or_else(|_| "0.0.0.0:8080".to_string())
+        .parse().expect("HTTP_HOST environment variable is not a valid IP:port");
     pub static ref WS_URL: String =
         env::var("WS_URL").expect("Missing WS_URL environment variable.");
     pub static ref MANAGE_TOKEN: String =
