@@ -22,9 +22,7 @@ async fn main() {
 
     let info_route = warp::path::end().map(|| warp::reply::json(&info::get_info()));
 
-    let api_route = warp::path("api").and(api::route());
-
-    let route = info_route.or(api_route);
+    let route = info_route.or(api::route());
 
     let warp_serve = warp::serve(route).run(*HTTP_HOST);
     let warp_future = tokio::spawn(warp_serve);

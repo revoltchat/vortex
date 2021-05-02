@@ -1,10 +1,32 @@
-use std::convert::Infallible;
+use warp::{filters::BoxedFilter, reply::Reply};
+use warp::{Filter, Rejection};
 
-use warp::reply::Reply;
-use warp::Filter;
+use crate::util::variables;
 
-pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Infallible> + Clone {
-    let route = warp::any().map(|| "test yes");
+pub mod error;
+pub use error::ApiError;
 
-    route
+fn authorize() -> impl Filter<Extract = ((),), Error = Rejection> + Copy {
+    warp::header::optional("Authorization").and_then(|authorization: Option<String>| async move {
+        match authorization {
+            Some(authorization) => {
+                if authorization == *variables::MANAGE_TOKEN {
+                    return Ok(());
+                }
+
+                Err(warp::reject::custom(ApiError::Unauthorized))
+            }
+            None => Err(warp::reject::custom(ApiError::Unauthorized)),
+        }
+    })
+}
+
+pub fn route() -> BoxedFilter<(impl Reply,)> {
+    let routes = warp::any().map(|| "crackhead");
+
+    authorize()
+        .untuple_one()
+        .and(routes)
+        .recover(error::handle_rejection)
+        .boxed()
 }
