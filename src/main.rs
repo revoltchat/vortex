@@ -7,6 +7,7 @@ use futures::try_join;
 use warp::Filter;
 
 pub mod api;
+pub mod info;
 pub mod util;
 
 use util::variables::HTTP_HOST;
@@ -19,12 +20,13 @@ async fn main() {
     info!("Starting Revolt Voso voice server");
     util::variables::preflight_checks();
 
-    let root_route = warp::path::end().map(|| "test");
+    let info_route = warp::path::end().map(|| warp::reply::json(&info::get_info()));
+
     let api_route = warp::path("api").and(api::route());
 
-    let route = root_route.or(api_route);
+    let route = info_route.or(api_route);
 
-    let warp_serve = warp::serve(route).run(HTTP_HOST.to_owned());
+    let warp_serve = warp::serve(route).run(*HTTP_HOST);
     let warp_future = tokio::spawn(warp_serve);
 
     try_join!(warp_future).unwrap();
