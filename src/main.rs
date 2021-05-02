@@ -9,6 +9,7 @@ use warp::Filter;
 pub mod api;
 pub mod info;
 pub mod util;
+pub mod ws;
 
 use util::variables::HTTP_HOST;
 
@@ -21,8 +22,9 @@ async fn main() {
     util::variables::preflight_checks();
 
     let info_route = warp::path::end().map(|| warp::reply::json(&info::get_info()));
+    let ws_route = warp::path::end().and(ws::route());
 
-    let route = info_route.or(api::route());
+    let route = ws_route.or(info_route).or(api::route());
 
     let warp_serve = warp::serve(route).run(*HTTP_HOST);
     let warp_future = tokio::spawn(warp_serve);
