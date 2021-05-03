@@ -11,6 +11,8 @@ pub mod info;
 pub mod util;
 pub mod ws;
 
+pub mod rtc;
+
 use util::variables::HTTP_HOST;
 
 #[tokio::main]
@@ -20,6 +22,9 @@ async fn main() {
 
     info!("Starting Revolt Voso voice server");
     util::variables::preflight_checks();
+
+    let worker_pool = rtc::worker::WorkerPool::new().await;
+    rtc::worker::WORKER_POOL.set(worker_pool).unwrap();
 
     let info_route = warp::path::end().map(|| warp::reply::json(&info::get_info()));
     let ws_route = warp::path::end().and(ws::route());
