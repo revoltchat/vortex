@@ -10,7 +10,7 @@ use tokio::sync::{
     RwLock,
 };
 
-use crate::rtc::get_worker_pool;
+use crate::{api::ApiError, rtc::get_worker_pool};
 
 #[derive(Clone, Debug)]
 pub enum RoomEvent {
@@ -31,12 +31,19 @@ pub struct Room {
 }
 
 impl Room {
-    pub async fn new(id: String /* video_allowed: bool */) -> Result<Arc<Self>, ()> {
+    pub async fn new(id: String /* video_allowed: bool */) -> Result<Arc<Self>, ApiError> {
+        if ROOMS.read().await.contains_key(&id) {
+            return Err(ApiError::RoomAlreadyExists(id));
+        }
+
         let worker = get_worker_pool().get_worker();
 
         let mut options = RouterOptions::default();
         options.media_codecs.push(crate::rtc::create_opus_codec(2));
-        let router = worker.create_router(options).await.map_err(|_| ())?;
+        let router = worker
+            .create_router(options)
+            .await
+            .map_err(|_| ApiError::InternalServerError)?;
 
         let (sender, _) = broadcast::channel(32);
         info!("Created new room {}", id);

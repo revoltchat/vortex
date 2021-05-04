@@ -28,7 +28,10 @@ async fn main() {
     let worker_pool = rtc::worker::WorkerPool::new().await;
     rtc::worker::WORKER_POOL.set(worker_pool).unwrap();
 
-    let info_route = warp::path::end().map(|| warp::reply::json(&info::get_info()));
+    let info_route = warp::path::end()
+        .and(warp::get())
+        .map(|| warp::reply::json(&info::get_info()));
+
     let ws_route = warp::path::end().and(ws::route());
 
     let route = ws_route.or(info_route).or(api::route());

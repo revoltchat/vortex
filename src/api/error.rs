@@ -10,14 +10,20 @@ use warp::{Rejection, Reply};
 #[derive(Debug, IntoStaticStr)]
 pub enum ApiError {
     Unauthorized,
+    InternalServerError,
+
     RoomNotFound(String),
+    RoomAlreadyExists(String),
 }
 
 impl ApiError {
     pub fn code(&self) -> StatusCode {
         match self {
             ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
+            ApiError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
+
             ApiError::RoomNotFound(_) => StatusCode::NOT_FOUND,
+            ApiError::RoomAlreadyExists(_) => StatusCode::CONFLICT,
         }
     }
 }
@@ -28,7 +34,10 @@ impl Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ApiError::Unauthorized => write!(f, "Invalid management token"),
+            ApiError::InternalServerError => write!(f, "Internal Server Error"),
+
             ApiError::RoomNotFound(id) => write!(f, "Room with ID {} not found", id),
+            ApiError::RoomAlreadyExists(id) => write!(f, "Room with ID {} already exists", id),
         }
     }
 }
@@ -50,7 +59,11 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     } else if let Some(api_error) = err.find::<ApiError>() {
         code = api_error.code();
         error = api_error.into();
-        message = Some(api_error.to_string());
+
+        match api_error {
+            ApiError::InternalServerError => (),
+            _ => message = Some(api_error.to_string()),
+        }
     } else {
         code = StatusCode::INTERNAL_SERVER_ERROR;
         error = "InternalServerError";
