@@ -1,8 +1,8 @@
 use serde::Serialize;
 use std::convert::Infallible;
 
-use warp::{filters::BoxedFilter, http::StatusCode, reply::Reply};
 use warp::Filter;
+use warp::{filters::BoxedFilter, http::StatusCode, reply::Reply};
 
 use crate::api::ApiError;
 use crate::state::room::{Room, ROOMS};
@@ -48,5 +48,25 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
             }
         });
 
-    get_rooms.or(get_room).or(create_room).boxed()
+    let delete_room = warp::path::param::<String>()
+        .and(warp::path::end())
+        .and(warp::delete())
+        .and_then(|id: String| async move {
+            match Room::get(&id).await {
+                Some(room) => {
+                    room.delete().await;
+                    Ok(warp::reply::with_status(
+                        warp::reply::reply(),
+                        StatusCode::NO_CONTENT,
+                    ))
+                }
+                None => Err(warp::reject::custom(ApiError::RoomNotFound(id))),
+            }
+        });
+
+    get_rooms
+        .or(get_room)
+        .or(create_room)
+        .or(delete_room)
+        .boxed()
 }

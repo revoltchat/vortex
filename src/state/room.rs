@@ -93,3 +93,9 @@ impl Room {
         }
     }
 }
+
+impl Drop for Room {
+    fn drop(&mut self) {
+        debug!("Room {} dropped, mediasoup Router cleaned up", self.id);
+    }
+}
