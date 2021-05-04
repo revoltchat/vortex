@@ -1,8 +1,14 @@
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::collections::HashMap;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use mediasoup::router::{Router, RouterOptions};
-use tokio::sync::{RwLock, broadcast::{self, Sender, Receiver}};
+use tokio::sync::{
+    broadcast::{self, Receiver, Sender},
+    RwLock,
+};
 
 use crate::rtc::get_worker_pool;
 
@@ -14,7 +20,7 @@ pub enum RoomEvent {
 }
 
 lazy_static! {
-    static ref ROOMS: RwLock<HashMap<String, Arc<Room>>> = RwLock::new(HashMap::new());
+    pub static ref ROOMS: RwLock<HashMap<String, Arc<Room>>> = RwLock::new(HashMap::new());
 }
 
 pub struct Room {
@@ -25,7 +31,7 @@ pub struct Room {
 }
 
 impl Room {
-    pub async fn new(id: String, /* video_allowed: bool */) -> Result<Arc<Self>, ()> {
+    pub async fn new(id: String /* video_allowed: bool */) -> Result<Arc<Self>, ()> {
         let worker = get_worker_pool().get_worker();
 
         let mut options = RouterOptions::default();
@@ -35,8 +41,10 @@ impl Room {
         let (sender, _) = broadcast::channel(32);
         info!("Created new room {}", id);
         let room = Arc::new(Room {
-            id: id.clone(), closed: AtomicBool::new(false),
-            router, sender
+            id: id.clone(),
+            closed: AtomicBool::new(false),
+            router,
+            sender,
         });
 
         ROOMS.write().await.insert(id, room.clone());
@@ -44,12 +52,15 @@ impl Room {
         Ok(room)
     }
 
-    pub async fn get(id: String) -> Option<Arc<Self>> {
-        ROOMS.read().await.get(&id).map(|arc| arc.clone())
+    pub async fn get(id: &str) -> Option<Arc<Self>> {
+        ROOMS.read().await.get(id).map(|arc| arc.clone())
     }
 
     pub async fn delete(&self) {
-        let result = self.closed.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed);
+        let result =
+            self.closed
+                .compare_exchange(false, true, Ordering::Release, Ordering::Relaxed);
+
         if result.is_ok() {
             info!("Deleting room {}", self.id);
             ROOMS.write().await.remove(&self.id);

@@ -1,4 +1,4 @@
-use std::num::{NonZeroU8, NonZeroU32};
+use std::num::{NonZeroU32, NonZeroU8};
 
 use mediasoup::rtp_parameters::{MimeTypeAudio, RtpCodecCapability, RtpCodecParametersParameters};
 
@@ -13,6 +13,6 @@ pub fn create_opus_codec(channels: u8) -> RtpCodecCapability {
         clock_rate: NonZeroU32::new(48000).unwrap(),
         channels: NonZeroU8::new(channels).expect("Invalid number of audio channels provided"),
         parameters: RtpCodecParametersParameters::default(),
-        rtcp_feedback: Vec::new()
+        rtcp_feedback: Vec::new(),
     }
 }

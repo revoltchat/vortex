@@ -14,7 +14,7 @@ pub fn get_worker_pool() -> &'static WorkerPool {
 // Single threaded for now
 #[derive(Debug)]
 pub struct WorkerPool {
-//  manager: WorkerManager,
+    //manager: WorkerManager,
     worker: Worker,
 }
 
@@ -27,7 +27,7 @@ impl WorkerPool {
         let worker = manager.create_worker(settings).await.unwrap();
         debug!("Initialized worker pool");
         WorkerPool {
-//          manager,
+            //manager,
             worker,
         }
     }

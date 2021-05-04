@@ -10,12 +10,14 @@ use warp::{Rejection, Reply};
 #[derive(Debug, IntoStaticStr)]
 pub enum ApiError {
     Unauthorized,
+    RoomNotFound(String),
 }
 
 impl ApiError {
     pub fn code(&self) -> StatusCode {
-        match *self {
+        match self {
             ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
+            ApiError::RoomNotFound(_) => StatusCode::NOT_FOUND,
         }
     }
 }
@@ -24,8 +26,9 @@ impl Reject for ApiError {}
 
 impl Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+        match self {
             ApiError::Unauthorized => write!(f, "Invalid management token"),
+            ApiError::RoomNotFound(id) => write!(f, "Room with ID {} not found", id),
         }
     }
 }
