@@ -10,8 +10,11 @@ use tokio::sync::{
     RwLock,
 };
 
-use crate::{api::ApiError, rtc::get_worker_pool};
 use super::user::User;
+use crate::{api::ApiError, rtc::get_worker_pool};
+
+pub mod users;
+pub use users::RoomUsers;
 
 #[derive(Clone, Debug)]
 pub enum RoomEvent {
@@ -24,14 +27,17 @@ lazy_static! {
     pub static ref ROOMS: RwLock<HashMap<String, Arc<Room>>> = RwLock::new(HashMap::new());
 }
 
+pub type RoomUserMap = HashMap<String, RwLock<User>>;
+pub type RoomRegistrationMap = HashMap<String, String>;
+
 pub struct Room {
     id: String,
     closed: AtomicBool,
     router: Router,
     sender: Sender<RoomEvent>,
 
-    pub(super) users: RwLock<HashMap<String, RwLock<User>>>,
-    pub(super) registrations: RwLock<HashMap<String, String>>,
+    pub(self) users: RwLock<RoomUserMap>,
+    pub(super) registrations: RwLock<RoomRegistrationMap>,
 }
 
 impl Room {
@@ -98,6 +104,10 @@ impl Room {
             false => Some(&self.router),
             true => None,
         }
+    }
+
+    pub fn users(self: &Arc<Room>) -> RoomUsers {
+        RoomUsers::from_room(self.clone())
     }
 }
 

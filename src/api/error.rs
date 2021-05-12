@@ -14,6 +14,9 @@ pub enum ApiError {
 
     RoomNotFound(String),
     RoomAlreadyExists(String),
+
+    UserNotFound(String),
+    UserAlreadyExists(String),
 }
 
 impl ApiError {
@@ -22,8 +25,8 @@ impl ApiError {
             ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
             ApiError::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
 
-            ApiError::RoomNotFound(_) => StatusCode::NOT_FOUND,
-            ApiError::RoomAlreadyExists(_) => StatusCode::CONFLICT,
+            ApiError::RoomNotFound(_) | ApiError::UserNotFound(_) => StatusCode::NOT_FOUND,
+            ApiError::RoomAlreadyExists(_) | ApiError::UserAlreadyExists(_) => StatusCode::CONFLICT,
         }
     }
 }
@@ -38,6 +41,9 @@ impl Display for ApiError {
 
             ApiError::RoomNotFound(id) => write!(f, "Room with ID {} not found", id),
             ApiError::RoomAlreadyExists(id) => write!(f, "Room with ID {} already exists", id),
+
+            ApiError::UserNotFound(id) => write!(f, "User with ID {} not found", id),
+            ApiError::UserAlreadyExists(id) => write!(f, "User with ID {} already exists", id),
         }
     }
 }

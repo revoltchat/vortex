@@ -1498,6 +1498,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 name = "voso"
 version = "0.3.0-alpha.1"
 dependencies = [
+ "base64",
  "dotenv",
  "env_logger",
  "futures",
@@ -1505,6 +1506,7 @@ dependencies = [
  "log",
  "mediasoup",
  "once_cell",
+ "rand 0.8.3",
  "serde",
  "serde_json",
  "strum",
