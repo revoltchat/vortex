@@ -11,6 +11,7 @@ use tokio::sync::{
 };
 
 use crate::{api::ApiError, rtc::get_worker_pool};
+use super::user::User;
 
 #[derive(Clone, Debug)]
 pub enum RoomEvent {
@@ -28,6 +29,9 @@ pub struct Room {
     closed: AtomicBool,
     router: Router,
     sender: Sender<RoomEvent>,
+
+    pub(super) users: RwLock<HashMap<String, RwLock<User>>>,
+    pub(super) registrations: RwLock<HashMap<String, String>>,
 }
 
 impl Room {
@@ -52,6 +56,9 @@ impl Room {
             closed: AtomicBool::new(false),
             router,
             sender,
+
+            users: RwLock::new(HashMap::new()),
+            registrations: RwLock::new(HashMap::new()),
         });
 
         ROOMS.write().await.insert(id, room.clone());
