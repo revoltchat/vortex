@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::{ops::Deref, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use super::{Room, RoomUserMap};
+use super::{Room, RoomUserMap, RoomEvent};
 use crate::api::ApiError;
 use crate::state::user::User;
 
@@ -58,7 +58,10 @@ impl<'r> RoomUsers {
     pub async fn remove(&'r self, id: &str) -> Result<(), ()> {
         let mut users = self.room.users.write().await;
         match users.remove(id) {
-            Some(_) => Ok(()),
+            Some(_) => {
+                self.room.send_event(RoomEvent::UserLeft(id.to_string()));
+                Ok(())
+            },
             None => Err(()),
         }
     }

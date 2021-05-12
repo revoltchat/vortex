@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use mediasoup::producer::Producer;
 
-use super::room::Room;
+use super::room::{Room, RoomEvent};
 
 #[non_exhaustive]
 pub enum ProduceType {
@@ -54,6 +54,7 @@ impl User {
         if let Some(token) = self.token.take() {
             let mut registrations = self.room.registrations.write().await;
             registrations.remove(&token);
+            self.room.send_event(RoomEvent::UserJoined(self.id.clone()));
         }
     }
 

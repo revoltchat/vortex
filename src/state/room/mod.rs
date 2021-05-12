@@ -36,7 +36,7 @@ pub struct Room {
     router: Router,
     sender: Sender<RoomEvent>,
 
-    pub(self) users: RwLock<RoomUserMap>,
+    users: RwLock<RoomUserMap>,
     pub(super) registrations: RwLock<RoomRegistrationMap>,
 }
 
@@ -84,12 +84,16 @@ impl Room {
         if result.is_ok() {
             info!("Deleting room {}", self.id);
             ROOMS.write().await.remove(&self.id);
-            self.sender.send(RoomEvent::RoomDelete).ok();
+            self.send_event(RoomEvent::RoomDelete);
         }
     }
 
     pub fn closed(&self) -> bool {
         self.closed.load(Ordering::Relaxed)
+    }
+
+    pub fn send_event(&self, event: RoomEvent) {
+        self.sender.send(event).ok();
     }
 
     pub fn subscribe(&self) -> Option<Receiver<RoomEvent>> {
