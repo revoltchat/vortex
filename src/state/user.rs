@@ -66,8 +66,14 @@ impl User {
         producer.as_ref()
     }
 
-    pub fn set_producer(&mut self, produce_type: ProduceType, new_producer: Producer) -> Result<(), ()> {
-        if !self.registered() { return Err(()); }
+    pub fn set_producer(
+        &mut self,
+        produce_type: ProduceType,
+        new_producer: Producer,
+    ) -> Result<(), ()> {
+        if !self.registered() {
+            return Err(());
+        }
         let producer = match produce_type {
             ProduceType::Audio => &mut self.audio,
         };

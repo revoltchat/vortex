@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::{ops::Deref, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use super::{Room, RoomUserMap, RoomEvent};
+use super::{Room, RoomEvent, RoomUserMap};
 use crate::api::ApiError;
 use crate::state::user::User;
 
@@ -52,7 +52,10 @@ impl<'r> RoomUsers {
             return None;
         }
 
-        Some(UserGuard { inner, id: id.to_string() })
+        Some(UserGuard {
+            inner,
+            id: id.to_string(),
+        })
     }
 
     pub async fn remove(&'r self, id: &str) -> Result<(), ()> {
@@ -61,7 +64,7 @@ impl<'r> RoomUsers {
             Some(_) => {
                 self.room.send_event(RoomEvent::UserLeft(id.to_string()));
                 Ok(())
-            },
+            }
             None => Err(()),
         }
     }
@@ -76,6 +79,8 @@ impl Deref for UserGuard<'_> {
     type Target = RwLock<User>;
 
     fn deref(&self) -> &Self::Target {
-        self.inner.get(&self.id).expect("UserGuard deref failed, this should never happen")
+        self.inner
+            .get(&self.id)
+            .expect("UserGuard deref failed, this should never happen")
     }
 }
