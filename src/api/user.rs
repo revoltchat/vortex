@@ -24,6 +24,7 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
             let user_lock = match users.new(id.clone()).await {
                 Ok(user) => user,
                 Err(ApiError::UserAlreadyExists(_)) => {
+                    debug!("User {} in room {} already exists, kicking them", &id, room.id());
                     users.remove(&id).await.ok();
                     users.new(id).await?
                 }

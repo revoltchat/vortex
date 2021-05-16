@@ -46,6 +46,7 @@ impl<'r> RoomUsers {
         registrations.insert(token, id.clone());
         drop(registrations);
 
+        debug!("Created new user {} in room {}", &id, self.room.id());
         Ok(self.get(&id).await.unwrap())
     }
 
@@ -65,6 +66,7 @@ impl<'r> RoomUsers {
         let mut users = self.room.users.write().await;
         match users.remove(id) {
             Some(_) => {
+                debug!("Removed user {} from room {}", id, self.room.id());
                 self.room.send_event(RoomEvent::UserLeft(id.to_string()));
                 Ok(())
             }

@@ -76,6 +76,10 @@ impl Room {
         ROOMS.read().await.get(id).map(|arc| arc.clone())
     }
 
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
     pub async fn delete(&self) {
         let result =
             self.closed
