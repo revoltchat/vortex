@@ -22,7 +22,7 @@ async fn main() {
     dotenv::dotenv().ok();
     env_logger::init_from_env(env_logger::Env::default().filter_or("RUST_LOG", "info"));
 
-    info!("Starting Revolt Voso voice server");
+    info!("Starting Revolt Vortex voice server");
     util::variables::preflight_checks();
 
     let worker_pool = rtc::worker::WorkerPool::new().await;
