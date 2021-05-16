@@ -4,7 +4,9 @@ description = "Voso is a Rust WebRTC server using mediasoup, acting as a beta au
 version = "0.3.0-alpha.1"
 authors = ["Martin Loffler <me@fatalerrorcoded.eu>"]
 edition = "2018"
+
 repository = "https://gitlab.insrt.uk/revolt/voso"
+license = "AGPL-3.0-or-later"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
