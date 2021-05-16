@@ -23,12 +23,15 @@ impl<'r> RoomUsers {
     }
 
     pub async fn new(&'r self, id: String) -> Result<UserGuard<'r>, ApiError> {
-        let mut rng = thread_rng();
-        let mut token = generate_token(&mut rng)?;
-        let registrations = self.room.registrations.read().await;
-        while registrations.contains_key(&token) {
-            token = generate_token(&mut rng)?;
-        }
+        let token = {
+            let registrations = self.room.registrations.read().await;
+            let mut rng = thread_rng();
+            let mut token = generate_token(&mut rng)?;
+            while registrations.contains_key(&token) {
+                token = generate_token(&mut rng)?;
+            }
+            token
+        };
 
         let user = User::new(self.room.clone(), id.clone(), token.clone());
         let mut users = self.room.users.write().await;
