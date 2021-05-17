@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::{str::FromStr, sync::Arc};
 
 use mediasoup::producer::Producer;
@@ -81,5 +82,19 @@ impl User {
 
         *producer = Some(new_producer);
         Ok(())
+    }
+}
+
+/// Structure passed to clients connected over WebSocket
+#[derive(Serialize)]
+pub struct UserInfo {
+    audio: bool,
+}
+
+impl From<&User> for UserInfo {
+    fn from(user: &User) -> UserInfo {
+        UserInfo {
+            audio: user.audio.is_some(),
+        }
     }
 }

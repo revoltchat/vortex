@@ -1,8 +1,8 @@
 use serde::Serialize;
 use std::sync::Arc;
 
-use warp::{filters::BoxedFilter, http::StatusCode, reply::Reply};
 use warp::Filter;
+use warp::{filters::BoxedFilter, http::StatusCode, reply::Reply};
 
 use crate::api::ApiError;
 use crate::state::room::Room;
@@ -24,7 +24,11 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
             let user_lock = match users.new(id.clone()).await {
                 Ok(user) => user,
                 Err(ApiError::UserAlreadyExists(_)) => {
-                    debug!("User {} in room {} already exists, kicking them", &id, room.id());
+                    debug!(
+                        "User {} in room {} already exists, kicking them",
+                        &id,
+                        room.id()
+                    );
                     users.remove(&id).await.ok();
                     users.new(id).await?
                 }
