@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
+use strum::IntoStaticStr;
 
 use mediasoup::{
     data_structures::{DtlsParameters, IceCandidate, IceParameters, TransportProtocol},
@@ -40,7 +41,7 @@ impl From<ProduceType> for MediaKind {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase")]
 pub enum WSCommandType {
@@ -134,7 +135,7 @@ pub enum WSReplyType {
     },
 
     StartProduce {
-        producer_id: String
+        producer_id: String,
     },
     StopProduce,
 

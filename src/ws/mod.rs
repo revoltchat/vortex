@@ -3,6 +3,7 @@ use futures::{SinkExt, StreamExt};
 use warp::ws::{Message, WebSocket, Ws};
 use warp::{Filter, Rejection, Reply};
 
+mod error;
 mod types;
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
