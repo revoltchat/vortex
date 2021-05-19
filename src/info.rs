@@ -3,7 +3,7 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Info {
-    voso: &'static str,
+    vortex: &'static str,
     features: Features,
     ws: &'static str,
 }
@@ -19,7 +19,7 @@ pub fn get_info() -> Info {
     };
 
     Info {
-        voso: env!("CARGO_PKG_VERSION"),
+        vortex: env!("CARGO_PKG_VERSION"),
         features,
         ws: &variables::WS_URL,
     }
