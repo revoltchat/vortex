@@ -41,6 +41,7 @@ impl Display for WSErrorType {
 }
 
 #[repr(u16)]
+#[derive(Clone, Copy)]
 pub enum WSCloseType {
     /// Sent when the received data is unparseable
     InvalidData = 1003,
@@ -65,9 +66,21 @@ impl Display for WSCloseType {
     }
 }
 
+impl From<serde_json::Error> for WSCloseType {
+    fn from(_: serde_json::Error) -> WSCloseType {
+        WSCloseType::InvalidData
+    }
+}
+
+impl From<warp::Error> for WSCloseType {
+    fn from(_: warp::Error) -> WSCloseType {
+        WSCloseType::ServerError
+    }
+}
+
 #[derive(Serialize)]
 pub struct WSError<'a> {
-    id: String,
+    id: Option<String>,
     #[serde(rename = "type")]
     command_type: &'a str,
     error: &'static str,
@@ -75,7 +88,7 @@ pub struct WSError<'a> {
 }
 
 impl<'a> WSError<'a> {
-    pub fn new(id: String, command_type: &'a str, error: WSErrorType) -> Self {
+    pub fn new(id: Option<String>, command_type: &'a str, error: WSErrorType) -> Self {
         WSError {
             id,
             command_type,

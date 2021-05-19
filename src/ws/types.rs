@@ -4,7 +4,7 @@ use strum::IntoStaticStr;
 
 use mediasoup::{
     data_structures::{DtlsParameters, IceCandidate, IceParameters, TransportProtocol},
-    rtp_parameters::{MediaKind, RtpCapabilities, RtpParameters},
+    rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters},
     sctp_parameters::SctpParameters,
     srtp_parameters::{SrtpCryptoSuite, SrtpParameters},
 };
@@ -43,8 +43,8 @@ impl From<ProduceType> for MediaKind {
 
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase")]
 pub enum WSCommandType {
+    #[serde(rename_all = "camelCase")]
     Authenticate {
         room_id: String,
         token: String,
@@ -59,14 +59,17 @@ pub enum WSCommandType {
 
     RoomInfo,
 
+    #[serde(rename_all = "camelCase")]
     StartProduce {
         produce_type: ProduceType,
         rtp_parameters: RtpParameters,
     },
+    #[serde(rename_all = "camelCase")]
     StopProduce {
         produce_type: ProduceType,
     },
 
+    #[serde(rename_all = "camelCase")]
     StartConsume {
         produce_type: ProduceType,
         user_id: String,
@@ -84,7 +87,7 @@ pub enum WSCommandType {
 
 #[derive(Deserialize)]
 pub struct WSCommand {
-    pub id: String,
+    pub id: Option<String>,
     #[serde(flatten)]
     pub command_type: WSCommandType,
 }
@@ -108,7 +111,9 @@ pub enum InitializeTransportsVariant {
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum ConnectTransportData {
+    #[serde(rename_all = "camelCase")]
     WebRTC { dtls_parameters: DtlsParameters },
+    #[serde(rename_all = "camelCase")]
     RTP { srtp_parameters: SrtpParameters },
 }
 
@@ -116,10 +121,11 @@ pub enum ConnectTransportData {
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase")]
 pub enum WSReplyType {
+    #[serde(rename_all = "camelCase")]
     Authenticate {
         user_id: String,
         room_id: String,
-        rtp_capabilities: RtpCapabilities,
+        rtp_capabilities: RtpCapabilitiesFinalized,
     },
 
     InitializeTransports {
@@ -128,17 +134,20 @@ pub enum WSReplyType {
     },
     ConnectTransport,
 
+    #[serde(rename_all = "camelCase")]
     RoomInfo {
         id: String,
         video_allowed: bool,
         users: Vec<UserInfo>,
     },
 
+    #[serde(rename_all = "camelCase")]
     StartProduce {
         producer_id: String,
     },
     StopProduce,
 
+    #[serde(rename_all = "camelCase")]
     StartConsume {
         id: String,
         producer_id: String,
@@ -151,7 +160,7 @@ pub enum WSReplyType {
 
 #[derive(Serialize)]
 pub struct WSReply {
-    pub id: String,
+    pub id: Option<String>,
     #[serde(flatten)]
     pub reply_type: WSReplyType,
 }
@@ -160,6 +169,7 @@ pub struct WSReply {
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum InitializeTransportsReply {
+    #[serde(rename_all = "camelCase")]
     SplitWebRTC {
         send_transport: WebRTCTransportInitData,
         recv_transport: WebRTCTransportInitData,
@@ -167,6 +177,7 @@ pub enum InitializeTransportsReply {
     CombinedWebRTC {
         transport: WebRTCTransportInitData,
     },
+    #[serde(rename_all = "camelCase")]
     CombinedRTP {
         ip: IpAddr,
         port: u16,
