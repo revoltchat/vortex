@@ -196,3 +196,26 @@ pub struct WebRTCTransportInitData {
     dtls_arameters: DtlsParameters,
     sctp_parameters: SctpParameters,
 }
+
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data")]
+#[serde(rename_all = "camelCase")]
+pub enum WSEvent {
+    UserJoined {
+        id: String,
+    },
+    UserLeft {
+        id: String,
+    },
+
+    UserStartProduce {
+        id: String,
+        #[serde(rename = "type")]
+        produce_type: ProduceType,
+    },
+    UserStopProduce {
+        id: String,
+        #[serde(rename = "type")]
+        produce_type: ProduceType,
+    },
+}
