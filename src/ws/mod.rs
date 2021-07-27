@@ -8,13 +8,13 @@ use futures::{
 use warp::ws::{Message, WebSocket, Ws};
 use warp::{Filter, Rejection, Reply};
 
-use crate::state::room::Room;
+use crate::state::room::{Room, RoomEvent};
 
 mod error;
 mod types;
 
 use error::WSCloseType;
-use types::{WSCommand, WSCommandType, WSReply, WSReplyType};
+use types::{WSCommand, WSCommandType, WSReply, WSReplyType, WSEvent};
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
     warp::ws::ws().map(|ws: Ws| ws.on_upgrade(on_connection))
@@ -84,12 +84,17 @@ async fn handle(
     // TODO: implement some sort of way to automatically remove a user from a room if the thread panics
     // the Room user remove function is async but the Drop trait is not
 
-    let result = event_loop(&room, &user_id, ws_stream).await;
+    let result = event_loop(&room, &user_id, ws_sink, ws_stream).await;
     room.users().remove(&user_id).await.ok();
     result
 }
 
-async fn event_loop(room: &Arc<Room>, user_id: &str, ws_stream: &mut SplitStream<WebSocket>) -> Result<(), WSCloseType> {
+async fn event_loop(
+    room: &Arc<Room>,
+    user_id: &str,
+    ws_sink: &mut SplitSink<WebSocket, Message>,
+    ws_stream: &mut SplitStream<WebSocket>,
+) -> Result<(), WSCloseType> {
     let mut room_stream = room.subscribe().ok_or(WSCloseType::RoomClosed)?;
     let mut ws_stream = ws_stream.fuse();
 
@@ -110,7 +115,30 @@ async fn event_loop(room: &Arc<Room>, user_id: &str, ws_stream: &mut SplitStream
                 }
             },
             event = room_stream.recv() => {
-                todo!();
+                let event = event.map_err(|_| WSCloseType::ServerError)?;
+                match event {
+                    RoomEvent::UserJoined(id) => {
+                        if id != user_id {
+                            let event = WSEvent::UserJoined { id };
+                            ws_sink
+                                .send(Message::text(serde_json::to_string(&event)?))
+                                .await?;
+                        }
+                    },
+                    RoomEvent::UserLeft(id) => {
+                        if id == user_id {
+                            return Err(WSCloseType::Kicked);
+                        }
+                        
+                        let event = WSEvent::UserLeft { id };
+                        ws_sink
+                            .send(Message::text(serde_json::to_string(&event)?))
+                            .await?;
+                    },
+                    RoomEvent::RoomDelete => {
+                        return Err(WSCloseType::RoomClosed);
+                    },
+                }
             }
         }
     }
