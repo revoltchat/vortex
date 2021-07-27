@@ -9,37 +9,7 @@ use mediasoup::{
     srtp_parameters::{SrtpCryptoSuite, SrtpParameters},
 };
 
-use crate::state::user::UserInfo;
-
-#[derive(Serialize, Deserialize, Clone, Copy)]
-pub enum ProduceType {
-    #[serde(rename = "audio")]
-    Audio,
-    #[serde(rename = "video")]
-    Video,
-
-    #[serde(rename = "saudio")]
-    #[serde(alias = "screenshareaudio")]
-    ScreenshareAudio,
-    #[serde(rename = "svideo")]
-    #[serde(alias = "screensharevideo")]
-    ScreenshareVideo,
-}
-
-impl ProduceType {
-    pub fn into_kind(self) -> MediaKind {
-        match self {
-            ProduceType::Audio | ProduceType::ScreenshareAudio => MediaKind::Audio,
-            ProduceType::Video | ProduceType::ScreenshareVideo => MediaKind::Video,
-        }
-    }
-}
-
-impl From<ProduceType> for MediaKind {
-    fn from(produce_type: ProduceType) -> MediaKind {
-        produce_type.into_kind()
-    }
-}
+use crate::state::user::{ProduceType, UserInfo};
 
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]

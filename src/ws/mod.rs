@@ -14,7 +14,7 @@ mod error;
 mod types;
 
 use error::WSCloseType;
-use types::{WSCommand, WSCommandType, WSReply, WSReplyType, WSEvent};
+use types::{WSCommand, WSCommandType, WSEvent, WSReply, WSReplyType};
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
     warp::ws::ws().map(|ws: Ws| ws.on_upgrade(on_connection))
@@ -129,12 +129,28 @@ async fn event_loop(
                         if id == user_id {
                             return Err(WSCloseType::Kicked);
                         }
-                        
+
                         let event = WSEvent::UserLeft { id };
                         ws_sink
                             .send(Message::text(serde_json::to_string(&event)?))
                             .await?;
                     },
+                    RoomEvent::UserStartProduce(id, produce_type) => {
+                        if id != user_id {
+                            let event = WSEvent::UserStartProduce { id, produce_type };
+                            ws_sink
+                                .send(Message::text(serde_json::to_string(&event)?))
+                                .await?;
+                        }
+                    },
+                    RoomEvent::UserStopProduce(id, produce_type) => {
+                        if id != user_id {
+                            let event = WSEvent::UserStopProduce { id, produce_type };
+                            ws_sink
+                                .send(Message::text(serde_json::to_string(&event)?))
+                                .await?;
+                        }
+                    }
                     RoomEvent::RoomDelete => {
                         return Err(WSCloseType::RoomClosed);
                     },

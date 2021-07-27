@@ -10,7 +10,7 @@ use tokio::sync::{
     RwLock,
 };
 
-use super::user::User;
+use super::user::{ProduceType, User};
 use crate::{api::ApiError, rtc::get_worker_pool};
 
 pub mod users;
@@ -20,6 +20,8 @@ pub use users::RoomUsers;
 pub enum RoomEvent {
     UserJoined(String),
     UserLeft(String),
+    UserStartProduce(String, ProduceType),
+    UserStopProduce(String, ProduceType),
     RoomDelete,
 }
 
