@@ -1,8 +1,10 @@
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use std::convert::TryFrom;
 
 use mediasoup::data_structures::TransportListenIp;
+use mediasoup::prelude::TransportListenIps;
 
 lazy_static! {
     // HTTP API
@@ -16,7 +18,7 @@ lazy_static! {
         env::var("MANAGE_TOKEN").expect("Missing MANAGE_TOKEN environment variable.");
 
     // RTC
-    pub static ref RTC_IPS: Vec<TransportListenIp> = {
+    pub static ref RTC_IPS: TransportListenIps = {
         let ip_list = env::var("RTC_IPS").expect("Missing RTC_IPS environment variable.");
         let ip_list = ip_list.split(';');
         let mut ip_vec = Vec::new();
@@ -30,7 +32,8 @@ lazy_static! {
                 });
             }
         }
-        ip_vec
+
+        TransportListenIps::try_from(ip_vec).unwrap()
     };
 
     pub static ref RTC_MIN_PORT: u16 = env::var("RTC_MIN_PORT")

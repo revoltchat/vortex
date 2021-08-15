@@ -1,15 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
 use strum::IntoStaticStr;
 
-use mediasoup::{
-    data_structures::{DtlsParameters, IceCandidate, IceParameters, TransportProtocol},
-    rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters},
-    sctp_parameters::SctpParameters,
-    srtp_parameters::{SrtpCryptoSuite, SrtpParameters},
-};
+use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
 
 use crate::state::user::{ProduceType, UserInfo};
+use crate::rtc::types::{ConnectTransportData, InitializationInput, TransportInitData};
 
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
@@ -21,10 +16,12 @@ pub enum WSCommandType {
     },
 
     InitializeTransports {
-        data: InitializeTransportsData,
+        #[serde(flatten)]
+        variant: InitializationInput,
     },
     ConnectTransport {
-        data: ConnectTransportData,
+        #[serde(flatten)]
+        variant: ConnectTransportData,
     },
 
     RoomInfo,
@@ -62,31 +59,6 @@ pub struct WSCommand {
     pub command_type: WSCommandType,
 }
 
-#[derive(Deserialize)]
-pub struct InitializeTransportsData {
-    pub id: String,
-    #[serde(flatten)]
-    pub variant: InitializeTransportsVariant,
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "mode")]
-pub enum InitializeTransportsVariant {
-    SplitWebRTC,
-    CombinedWebRTC,
-    CombinedRTP,
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-#[serde(rename_all = "camelCase")]
-pub enum ConnectTransportData {
-    #[serde(rename_all = "camelCase")]
-    WebRTC { dtls_parameters: DtlsParameters },
-    #[serde(rename_all = "camelCase")]
-    RTP { srtp_parameters: SrtpParameters },
-}
-
 #[derive(Serialize)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "camelCase")]
@@ -100,7 +72,7 @@ pub enum WSReplyType {
 
     InitializeTransports {
         #[serde(flatten)]
-        reply_data: InitializeTransportsReply,
+        reply_data: TransportInitData,
     },
     ConnectTransport,
 
@@ -133,38 +105,6 @@ pub struct WSReply {
     pub id: Option<String>,
     #[serde(flatten)]
     pub reply_type: WSReplyType,
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-#[serde(rename_all = "camelCase")]
-pub enum InitializeTransportsReply {
-    #[serde(rename_all = "camelCase")]
-    SplitWebRTC {
-        send_transport: WebRTCTransportInitData,
-        recv_transport: WebRTCTransportInitData,
-    },
-    CombinedWebRTC {
-        transport: WebRTCTransportInitData,
-    },
-    #[serde(rename_all = "camelCase")]
-    CombinedRTP {
-        ip: IpAddr,
-        port: u16,
-        protocol: TransportProtocol,
-        id: String,
-        srtp_crypto_suite: SrtpCryptoSuite,
-    },
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WebRTCTransportInitData {
-    id: String,
-    ice_parameters: IceParameters,
-    ice_candidates: Vec<IceCandidate>,
-    dtls_arameters: DtlsParameters,
-    sctp_parameters: SctpParameters,
 }
 
 #[derive(Serialize)]
