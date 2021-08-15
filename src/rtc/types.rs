@@ -1,10 +1,10 @@
+use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use serde::{Serialize, Deserialize};
 
+use mediasoup::data_structures::TransportProtocol;
 use mediasoup::prelude::*;
 use mediasoup::sctp_parameters::SctpParameters;
 use mediasoup::srtp_parameters::SrtpParameters;
-use mediasoup::data_structures::TransportProtocol;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +15,7 @@ pub struct InitializationInput {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(tag="mode")]
+#[serde(tag = "mode")]
 pub enum InitializationInputMode {
     SplitWebRtc,
     CombinedWebRtc,
@@ -27,31 +27,31 @@ pub enum InitializationInputMode {
 #[serde(rename_all = "camelCase")]
 pub enum TransportInitData {
     #[serde(rename_all = "camelCase")]
-    SplitWebRTC {
-        send_transport: WebRTCTransportInitData,
-        recv_transport: WebRTCTransportInitData,
+    SplitWebRtc {
+        send_transport: WebRtcTransportInitData,
+        recv_transport: WebRtcTransportInitData,
     },
-    CombinedWebRTC {
-        transport: WebRTCTransportInitData,
+    CombinedWebRtc {
+        transport: WebRtcTransportInitData,
     },
     #[serde(rename_all = "camelCase")]
-    CombinedRTP {
+    CombinedRtp {
         ip: IpAddr,
         port: u16,
         protocol: TransportProtocol,
-        id: String,
+        id: TransportId,
         srtp_crypto_suite: SrtpCryptoSuite,
     },
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WebRTCTransportInitData {
-    id: String,
-    ice_parameters: IceParameters,
-    ice_candidates: Vec<IceCandidate>,
-    dtls_arameters: DtlsParameters,
-    sctp_parameters: SctpParameters,
+pub struct WebRtcTransportInitData {
+    pub id: TransportId,
+    pub ice_parameters: IceParameters,
+    pub ice_candidates: Vec<IceCandidate>,
+    pub dtls_parameters: DtlsParameters,
+    pub sctp_parameters: Option<SctpParameters>,
 }
 
 #[derive(Deserialize)]

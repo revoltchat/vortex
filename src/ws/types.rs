@@ -3,8 +3,8 @@ use strum::IntoStaticStr;
 
 use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
 
-use crate::state::user::{ProduceType, UserInfo};
 use crate::rtc::types::{ConnectTransportData, InitializationInput, TransportInitData};
+use crate::state::user::{ProduceType, UserInfo};
 
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
@@ -17,11 +17,11 @@ pub enum WSCommandType {
 
     InitializeTransports {
         #[serde(flatten)]
-        variant: InitializationInput,
+        init_data: InitializationInput,
     },
     ConnectTransport {
         #[serde(flatten)]
-        variant: ConnectTransportData,
+        connect_data: ConnectTransportData,
     },
 
     RoomInfo,

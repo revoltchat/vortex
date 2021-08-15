@@ -8,7 +8,10 @@ use futures::{
 use warp::ws::{Message, WebSocket, Ws};
 use warp::{Filter, Rejection, Reply};
 
-use crate::state::room::{Room, RoomEvent};
+use crate::{
+    rtc::RtcState,
+    state::room::{Room, RoomEvent},
+};
 
 mod error;
 mod types;
@@ -81,10 +84,47 @@ async fn handle(
         }
     };
 
+    // Transport initialization
+    let rtc_state = loop {
+        match ws_stream.next().await {
+            Some(message) => {
+                let message = message.map_err(|_| WSCloseType::ServerError)?;
+                // Try to get the text message, ignore otherwise (might be ping, binary)
+                if let Ok(text) = message.to_str() {
+                    let out: WSCommand = serde_json::from_str(text)?;
+                    if let WSCommandType::InitializeTransports { init_data } = out.command_type {
+                        let router = room.router().ok_or(WSCloseType::RoomClosed)?;
+                        let rtc_state = RtcState::initialize(router, init_data)
+                            .await
+                            .map_err(|_| WSCloseType::ServerError)?;
+                        let reply_data = rtc_state.get_init_data();
+
+                        let reply = WSReply {
+                            id: out.id,
+                            reply_type: WSReplyType::InitializeTransports { reply_data },
+                        };
+
+                        ws_sink
+                            .send(Message::text(serde_json::to_string(&reply)?))
+                            .await?;
+                        break rtc_state;
+                    } else {
+                        return Err(WSCloseType::InvalidState);
+                    }
+                }
+            }
+            // Client disconnected before they authenticated, clean up
+            None => {
+                room.users().remove(&user_id).await.ok();
+                return Ok(());
+            }
+        }
+    };
+
     // TODO: implement some sort of way to automatically remove a user from a room if the thread panics
     // the Room user remove function is async but the Drop trait is not
 
-    let result = event_loop(&room, &user_id, ws_sink, ws_stream).await;
+    let result = event_loop(&room, &user_id, rtc_state, ws_sink, ws_stream).await;
     room.users().remove(&user_id).await.ok();
     result
 }
@@ -92,6 +132,7 @@ async fn handle(
 async fn event_loop(
     room: &Arc<Room>,
     user_id: &str,
+    rtc_state: RtcState,
     ws_sink: &mut SplitSink<WebSocket, Message>,
     ws_stream: &mut SplitStream<WebSocket>,
 ) -> Result<(), WSCloseType> {
