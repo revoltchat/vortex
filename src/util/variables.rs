@@ -1,5 +1,8 @@
 use std::env;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
+
+use mediasoup::data_structures::TransportListenIp;
 
 lazy_static! {
     // HTTP API
@@ -13,8 +16,23 @@ lazy_static! {
         env::var("MANAGE_TOKEN").expect("Missing MANAGE_TOKEN environment variable.");
 
     // RTC
-    pub static ref RTC_IPS: String =
-        env::var("RTC_IPS").expect("Missing RTC_IPS environment variable.");
+    pub static ref RTC_IPS: Vec<TransportListenIp> = {
+        let ip_list = env::var("RTC_IPS").expect("Missing RTC_IPS environment variable.");
+        let ip_list = ip_list.split(';');
+        let mut ip_vec = Vec::new();
+        for ip_pair in ip_list {
+            let mut iter = ip_pair.split(',');
+            if let Some(ip) = iter.next() {
+                let ip = IpAddr::from_str(&ip).expect("Not a valid listen IP");
+                let announced_ip = iter.next().map(|ip| IpAddr::from_str(&ip).expect("Not a valid announcement IP"));
+                ip_vec.push(TransportListenIp {
+                    ip, announced_ip,
+                });
+            }
+        }
+        ip_vec
+    };
+
     pub static ref RTC_MIN_PORT: u16 = env::var("RTC_MIN_PORT")
         .unwrap_or_else(|_| "10000".to_string())
         .parse()
@@ -30,5 +48,5 @@ pub fn preflight_checks() {
     format!("{}", *WS_URL);
     format!("{}", *MANAGE_TOKEN);
 
-    format!("{}", *RTC_IPS);
+    format!("{}", RTC_IPS.len());
 }
