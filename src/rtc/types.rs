@@ -55,11 +55,18 @@ pub struct WebRtcTransportInitData {
 }
 
 #[derive(Deserialize)]
+pub struct ConnectTransportData {
+    pub id: TransportId,
+    #[serde(flatten)]
+    pub params: ConnectTransportParams,
+}
+
+#[derive(Deserialize)]
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
-pub enum ConnectTransportData {
+pub enum ConnectTransportParams {
     #[serde(rename_all = "camelCase")]
-    WebRTC { dtls_parameters: DtlsParameters },
+    WebRtc { dtls_parameters: DtlsParameters },
     #[serde(rename_all = "camelCase")]
-    RTP { srtp_parameters: SrtpParameters },
+    Rtp { srtp_parameters: SrtpParameters },
 }

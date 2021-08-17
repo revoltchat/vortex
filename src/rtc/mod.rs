@@ -13,8 +13,8 @@ pub use worker::get_worker_pool;
 pub const SRTP_CRYPTO_SUITE: SrtpCryptoSuite = SrtpCryptoSuite::AesCm128HmacSha180;
 
 use types::{
-    ConnectTransportData, InitializationInput, InitializationInputMode, TransportInitData,
-    WebRtcTransportInitData,
+    ConnectTransportData, ConnectTransportParams, InitializationInput, InitializationInputMode,
+    TransportInitData, WebRtcTransportInitData,
 };
 
 pub fn create_opus_codec(channels: u8) -> RtpCodecCapability {
@@ -130,6 +130,49 @@ impl RtcState {
         match self.transport_mode {
             TransportMode::CombinedRtp(ref transport) => Some(transport).filter(|t| t.id() == id),
             _ => None,
+        }
+    }
+
+    pub async fn connect_transport(&self, connect_data: &ConnectTransportData) -> Result<(), ()> {
+        match self.transport_mode {
+            TransportMode::SplitWebRtc(..) | TransportMode::CombinedWebRtc(..) => {
+                if let ConnectTransportParams::WebRtc { dtls_parameters } = &connect_data.params {
+                    let transport = self
+                        .get_webrtc_transport_by_id(connect_data.id)
+                        .ok_or_else(|| ())?;
+
+                    transport
+                        .connect(WebRtcTransportRemoteParameters {
+                            dtls_parameters: dtls_parameters.clone(),
+                        })
+                        .await
+                        .map_err(|_| ())?;
+
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
+            TransportMode::CombinedRtp(..) => {
+                if let ConnectTransportParams::Rtp { srtp_parameters } = &connect_data.params {
+                    let transport = self
+                        .get_rtp_transport_by_id(connect_data.id)
+                        .ok_or_else(|| ())?;
+                    transport
+                        .connect(PlainTransportRemoteParameters {
+                            ip: None,
+                            port: None,
+                            rtcp_port: None,
+                            srtp_parameters: Some(srtp_parameters.clone()),
+                        })
+                        .await
+                        .map_err(|_| ())?;
+
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 }

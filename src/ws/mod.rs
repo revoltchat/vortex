@@ -16,7 +16,7 @@ use crate::{
 mod error;
 mod types;
 
-use error::WSCloseType;
+use error::{WSCloseType, WSError, WSErrorType};
 use types::{WSCommand, WSCommandType, WSEvent, WSReply, WSReplyType};
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
@@ -147,9 +147,27 @@ async fn event_loop(
                     // Try to get the text message, ignore otherwise (might be ping, binary)
                     if let Ok(text) = message.to_str() {
                         let out: WSCommand = serde_json::from_str(text)?;
-                        match out {
-                            _ => todo!(),
-                        }
+                        match &out.command_type {
+                            WSCommandType::ConnectTransport { connect_data } => {
+                                let result = rtc_state.connect_transport(connect_data).await;
+                                if let Ok(_) = result {
+                                    let reply = WSReply {
+                                        id: out.id,
+                                        reply_type: WSReplyType::ConnectTransport,
+                                    };
+
+                                    ws_sink
+                                        .send(Message::text(serde_json::to_string(&reply)?))
+                                        .await?;
+                                } else {
+                                    let error = WSError::from_command(out, WSErrorType::TransportConnectionFailure);
+                                    ws_sink
+                                        .send(Message::text(serde_json::to_string(&error)?))
+                                        .await?;
+                                }
+                            },
+                            _ => return Err(WSCloseType::InvalidState),
+                        };
                     }
                 } else {
                     return Ok(());
