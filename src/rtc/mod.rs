@@ -13,7 +13,8 @@ pub use worker::get_worker_pool;
 pub const SRTP_CRYPTO_SUITE: SrtpCryptoSuite = SrtpCryptoSuite::AesCm128HmacSha180;
 
 use types::{
-    InitializationInput, InitializationInputMode, TransportInitData, WebRtcTransportInitData,
+    ConnectTransportData, InitializationInput, InitializationInputMode, TransportInitData,
+    WebRtcTransportInitData,
 };
 
 pub fn create_opus_codec(channels: u8) -> RtpCodecCapability {
@@ -112,6 +113,25 @@ impl RtcState {
     pub fn combined(&self) -> bool {
         self.transport_mode.combined()
     }
+
+    pub fn get_webrtc_transport_by_id(&self, id: TransportId) -> Option<&WebRtcTransport> {
+        match self.transport_mode {
+            TransportMode::SplitWebRtc(ref send, ref recv) => Some(send)
+                .filter(|t| t.id() == id)
+                .or_else(|| Some(recv).filter(|t| t.id() == id)),
+            TransportMode::CombinedWebRtc(ref transport) => {
+                Some(transport).filter(|t| t.id() == id)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn get_rtp_transport_by_id(&self, id: TransportId) -> Option<&PlainTransport> {
+        match self.transport_mode {
+            TransportMode::CombinedRtp(ref transport) => Some(transport).filter(|t| t.id() == id),
+            _ => None,
+        }
+    }
 }
 
 enum TransportMode {
@@ -126,6 +146,22 @@ impl TransportMode {
             TransportMode::SplitWebRtc(..) => false,
             TransportMode::CombinedWebRtc(..) => true,
             TransportMode::CombinedRtp(..) => true,
+        }
+    }
+
+    pub fn send(&self) -> &dyn Transport {
+        match self {
+            TransportMode::SplitWebRtc(ref send, _) => send,
+            TransportMode::CombinedWebRtc(ref transport) => transport,
+            TransportMode::CombinedRtp(ref transport) => transport,
+        }
+    }
+
+    pub fn recv(&self) -> &dyn Transport {
+        match self {
+            TransportMode::SplitWebRtc(_, ref recv) => recv,
+            TransportMode::CombinedWebRtc(ref transport) => transport,
+            TransportMode::CombinedRtp(ref transport) => transport,
         }
     }
 }
