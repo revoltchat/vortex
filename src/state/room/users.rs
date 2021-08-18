@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::collections::hash_map::Values;
 use std::{ops::Deref, sync::Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 
@@ -89,6 +90,14 @@ impl<'r> RoomUsers {
             None => Err(()),
         }
     }
+
+    // This is dumb
+    pub async fn guard(&'r self) -> UserMapGuard<'r> {
+        let inner = self.room.users.read().await;
+        UserMapGuard {
+            inner,
+        }
+    }
 }
 
 pub struct UserGuard<'r> {
@@ -103,5 +112,15 @@ impl Deref for UserGuard<'_> {
         self.inner
             .get(&self.id)
             .expect("UserGuard deref failed, this should never happen")
+    }
+}
+
+pub struct UserMapGuard<'r> {
+    inner: RwLockReadGuard<'r, RoomUserMap>,
+}
+
+impl<'r> UserMapGuard<'r> {
+    pub fn iter(&'r self) -> Values<'r, String, RwLock<User>> {
+        self.inner.values()
     }
 }
