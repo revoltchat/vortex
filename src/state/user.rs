@@ -111,6 +111,10 @@ impl User {
         *producer = Some(new_producer);
         Ok(())
     }
+
+    pub fn into_info(&self) -> UserInfo {
+        UserInfo::from(self)
+    }
 }
 
 /// Structure passed to clients connected over WebSocket

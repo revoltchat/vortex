@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::{
@@ -10,7 +11,10 @@ use warp::{Filter, Rejection, Reply};
 
 use crate::{
     rtc::RtcState,
-    state::room::{Room, RoomEvent},
+    state::{
+        room::{Room, RoomEvent},
+        user::UserInfo,
+    },
 };
 
 mod error;
@@ -166,6 +170,28 @@ async fn event_loop(
                                         .await?;
                                 }
                             },
+                            WSCommandType::RoomInfo => {
+                                let users = room.users();
+                                let guard = users.guard().await;
+                                let mut user_info: HashMap<String, UserInfo> = HashMap::new();
+                                for user in guard.iter() {
+                                    let user = user.read().await;
+                                    user_info.insert(user.id().to_string(), user.into_info());
+                                }
+
+                                let reply = WSReply {
+                                    id: out.id,
+                                    reply_type: WSReplyType::RoomInfo {
+                                        id: room.id().to_string(),
+                                        video_allowed: false,
+                                        users: user_info,
+                                    }
+                                };
+
+                                ws_sink
+                                    .send(Message::text(serde_json::to_string(&reply)?))
+                                    .await?;
+                            }
                             _ => return Err(WSCloseType::InvalidState),
                         };
                     }

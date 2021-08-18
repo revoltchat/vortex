@@ -94,9 +94,7 @@ impl<'r> RoomUsers {
     // This is dumb
     pub async fn guard(&'r self) -> UserMapGuard<'r> {
         let inner = self.room.users.read().await;
-        UserMapGuard {
-            inner,
-        }
+        UserMapGuard { inner }
     }
 }
 

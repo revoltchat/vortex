@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum::IntoStaticStr;
 
 use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
@@ -80,7 +81,7 @@ pub enum WSReplyType {
     RoomInfo {
         id: String,
         video_allowed: bool,
-        users: Vec<UserInfo>,
+        users: HashMap<String, UserInfo>,
     },
 
     #[serde(rename_all = "camelCase")]
