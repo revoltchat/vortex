@@ -98,7 +98,7 @@ impl User {
     pub fn set_producer(
         &mut self,
         produce_type: ProduceType,
-        new_producer: Producer,
+        new_producer: Option<Producer>,
     ) -> Result<(), ()> {
         if !self.registered() {
             return Err(());
@@ -108,7 +108,7 @@ impl User {
             _ => todo!(),
         };
 
-        *producer = Some(new_producer);
+        *producer = new_producer;
         Ok(())
     }
 

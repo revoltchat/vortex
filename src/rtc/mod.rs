@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::num::{NonZeroU32, NonZeroU8};
 
 use crate::util::variables::{DISABLE_RTP, RTC_IPS};
+use crate::state::user::ProduceType;
 use futures::join;
 use mediasoup::prelude::*;
 
@@ -174,6 +175,11 @@ impl RtcState {
                 }
             }
         }
+    }
+
+    pub async fn start_produce(&self, produce_type: ProduceType, rtp_parameters: RtpParameters) -> Result<Producer, ProduceError> {
+        let transport = self.transport_mode.send();
+        transport.produce(ProducerOptions::new(produce_type.into_kind(), rtp_parameters)).await
     }
 }
 
