@@ -191,7 +191,69 @@ async fn event_loop(
                                 ws_sink
                                     .send(Message::text(serde_json::to_string(&reply)?))
                                     .await?;
-                            }
+                            },
+                            WSCommandType::StartProduce { produce_type, rtp_parameters } => {
+                                let users = room.users();
+                                let user = users
+                                    .get(user_id)
+                                    .await
+                                    .ok_or_else(|| WSCloseType::ServerError)?;
+                                
+                                let result = rtc_state.start_produce(produce_type, rtp_parameters.clone()).await;
+                                match result {
+                                    Ok(producer) => {
+                                        let producer_id = producer.id();
+                                        let mut mut_user = user.write().await;
+                                        mut_user.set_producer(*produce_type, Some(producer)).ok();
+                                        room.send_event(RoomEvent::UserStartProduce(user_id.to_string(), *produce_type));
+                                        
+                                        let reply = WSReply {
+                                            id: out.id,
+                                            reply_type: WSReplyType::StartProduce { producer_id }
+                                        };
+        
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&reply)?))
+                                            .await?;
+                                    },
+                                    Err(err) => {
+                                        error!("Error while trying to start produce: {:?}", err);
+                                        let error = WSError::from_command(out, WSErrorType::ProducerFailure);
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&error)?))
+                                            .await?;
+                                    }
+                                }
+                            },
+                            WSCommandType::StopProduce { produce_type } => {
+                                let users = room.users();
+                                let user = users
+                                    .get(user_id)
+                                    .await
+                                    .ok_or_else(|| WSCloseType::ServerError)?;
+                                
+                                let mut mut_user = user.write().await;
+                                match mut_user.get_producer(*produce_type) {
+                                    Some(_) => {
+                                        mut_user.set_producer(*produce_type, None).ok();
+                                        room.send_event(RoomEvent::UserStopProduce(user_id.to_string(), *produce_type));
+                                        let reply = WSReply {
+                                            id: out.id,
+                                            reply_type: WSReplyType::StopProduce,
+                                        };
+        
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&reply)?))
+                                            .await?;
+                                    },
+                                    None => {
+                                        let error = WSError::from_command(out, WSErrorType::ProducerNotFound);
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&error)?))
+                                            .await?;
+                                    }
+                                }
+                            },
                             _ => return Err(WSCloseType::InvalidState),
                         };
                     }

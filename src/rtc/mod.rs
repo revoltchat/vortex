@@ -177,7 +177,7 @@ impl RtcState {
         }
     }
 
-    pub async fn start_produce(&self, produce_type: ProduceType, rtp_parameters: RtpParameters) -> Result<Producer, ProduceError> {
+    pub async fn start_produce(&self, produce_type: &ProduceType, rtp_parameters: RtpParameters) -> Result<Producer, ProduceError> {
         let transport = self.transport_mode.send();
         transport.produce(ProducerOptions::new(produce_type.into_kind(), rtp_parameters)).await
     }

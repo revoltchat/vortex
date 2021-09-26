@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use strum::IntoStaticStr;
 
 use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
+use mediasoup::producer::ProducerId;
 
 use crate::rtc::types::{ConnectTransportData, InitializationInput, TransportInitData};
 use crate::state::user::{ProduceType, UserInfo};
@@ -86,14 +87,14 @@ pub enum WSReplyType {
 
     #[serde(rename_all = "camelCase")]
     StartProduce {
-        producer_id: String,
+        producer_id: ProducerId,
     },
     StopProduce,
 
     #[serde(rename_all = "camelCase")]
     StartConsume {
         id: String,
-        producer_id: String,
+        producer_id: ProducerId,
         kind: MediaKind,
         rtp_parameters: RtpParameters,
     },

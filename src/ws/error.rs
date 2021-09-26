@@ -11,7 +11,7 @@ pub enum WSErrorType {
     TransportConnectionFailure,
 
     ProducerFailure,
-    ProducerNotFound(String),
+    ProducerNotFound,
 
     ConsumerFailure,
     ConsumerNotFound(String),
@@ -29,7 +29,7 @@ impl Display for WSErrorType {
                 f,
                 "An unknown error occured while setting up an RTC producer"
             ),
-            WSErrorType::ProducerNotFound(id) => write!(f, "Producer with ID {} doesn't exist", id),
+            WSErrorType::ProducerNotFound => write!(f, "Producer doesn't exist"),
 
             WSErrorType::ConsumerFailure => write!(
                 f,
