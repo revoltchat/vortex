@@ -34,4 +34,7 @@ serde_json = "1.0"
 strum = { version = "0.21", features = ["derive"] }
 
 # RTC
-mediasoup = "0.8.4"
+mediasoup = "0.8.5"
+
+[patch.crates-io]
+mediasoup = { git = "https://github.com/fatalerrorcoded/mediasoup" }
