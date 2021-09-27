@@ -136,7 +136,7 @@ async fn handle(
 async fn event_loop(
     room: &Arc<Room>,
     user_id: &str,
-    rtc_state: RtcState,
+    mut rtc_state: RtcState,
     ws_sink: &mut SplitSink<WebSocket, Message>,
     ws_stream: &mut SplitStream<WebSocket>,
 ) -> Result<(), WSCloseType> {
@@ -217,7 +217,7 @@ async fn event_loop(
                                             .await?;
                                     },
                                     Err(err) => {
-                                        error!("Error while trying to start produce: {:?}", err);
+                                        error!("Error while trying to start produce for user {}: {:?}", user_id, err);
                                         let error = WSError::from_command(out, WSErrorType::ProducerFailure);
                                         ws_sink
                                             .send(Message::text(serde_json::to_string(&error)?))
@@ -253,6 +253,63 @@ async fn event_loop(
                                             .await?;
                                     }
                                 }
+                            },
+                            WSCommandType::StartConsume { produce_type, user_id: producing_id } => {
+                                let producing_id = producing_id.clone();
+                                let users = room.users();
+                                match users.get(&producing_id).await {
+                                    Some(producing_user) => {
+                                        let producing_user = producing_user.read().await;
+                                        match producing_user.get_producer(*produce_type) {
+                                            Some(producer) => {
+                                                let router = room.router().ok_or_else(|| WSCloseType::ServerError)?;
+                                                if router.can_consume(&producer.id(), rtc_state.rtp_capabilities()) {
+                                                    match rtc_state.start_consume(producer.id()).await {
+                                                        Ok(consumer) => {
+                                                            let reply = WSReply {
+                                                                id: out.id,
+                                                                reply_type: WSReplyType::StartConsume {
+                                                                    id: consumer.id(),
+                                                                    producer_id: consumer.producer_id(),
+                                                                    kind: consumer.kind(),
+                                                                    rtp_parameters: consumer.rtp_parameters().clone(),
+                                                                },
+                                                            };
+                            
+                                                            ws_sink
+                                                                .send(Message::text(serde_json::to_string(&reply)?))
+                                                                .await?;
+                                                        },
+                                                        Err(err) => {
+                                                            error!("Error while trying to start produce: {:?}", err);
+                                                            let error = WSError::from_command(out, WSErrorType::ProducerFailure);
+                                                            ws_sink
+                                                                .send(Message::text(serde_json::to_string(&error)?))
+                                                                .await?;
+                                                        }
+                                                    };
+                                                } else {
+                                                    let error = WSError::from_command(out, WSErrorType::ConsumerFailure);
+                                                    ws_sink
+                                                        .send(Message::text(serde_json::to_string(&error)?))
+                                                        .await?;
+                                                }
+                                            },
+                                            None => {
+                                                let error = WSError::from_command(out, WSErrorType::ProducerNotFound);
+                                                ws_sink
+                                                    .send(Message::text(serde_json::to_string(&error)?))
+                                                    .await?;
+                                            }
+                                        }
+                                    },
+                                    None => {
+                                        let error = WSError::from_command(out, WSErrorType::UserNotFound(producing_id));
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&error)?))
+                                            .await?;
+                                    }
+                                };
                             },
                             _ => return Err(WSCloseType::InvalidState),
                         };

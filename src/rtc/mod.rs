@@ -32,7 +32,7 @@ pub fn create_opus_codec(channels: u8) -> RtpCodecCapability {
 pub struct RtcState {
     rtp_capabilities: RtpCapabilities,
     transport_mode: TransportMode,
-    consumers: HashMap<String, Consumer>,
+    consumers: HashMap<ConsumerId, Consumer>,
 }
 
 impl RtcState {
@@ -75,6 +75,10 @@ impl RtcState {
             transport_mode,
             consumers: HashMap::new(),
         })
+    }
+
+    pub fn rtp_capabilities(&self) -> &RtpCapabilities {
+        &self.rtp_capabilities
     }
 
     pub fn get_init_data(&self) -> TransportInitData {
@@ -180,6 +184,15 @@ impl RtcState {
     pub async fn start_produce(&self, produce_type: &ProduceType, rtp_parameters: RtpParameters) -> Result<Producer, ProduceError> {
         let transport = self.transport_mode.send();
         transport.produce(ProducerOptions::new(produce_type.into_kind(), rtp_parameters)).await
+    }
+    
+    pub async fn start_consume(&mut self, producer_id: ProducerId) -> Result<Consumer, ConsumeError> {
+        let transport = self.transport_mode.recv();
+        let mut options = ConsumerOptions::new(producer_id, self.rtp_capabilities.clone());
+        options.paused = true;
+        let consumer = transport.consume(options).await?;
+        self.consumers.insert(consumer.id(), consumer.clone());
+        Ok(consumer)
     }
 }
 
