@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::num::{NonZeroU32, NonZeroU8};
 
-use crate::util::variables::{DISABLE_RTP, RTC_IPS};
 use crate::state::user::ProduceType;
+use crate::util::variables::{DISABLE_RTP, RTC_IPS};
 use futures::join;
 use mediasoup::prelude::*;
 
@@ -181,12 +181,24 @@ impl RtcState {
         }
     }
 
-    pub async fn start_produce(&self, produce_type: &ProduceType, rtp_parameters: RtpParameters) -> Result<Producer, ProduceError> {
+    pub async fn start_produce(
+        &self,
+        produce_type: &ProduceType,
+        rtp_parameters: RtpParameters,
+    ) -> Result<Producer, ProduceError> {
         let transport = self.transport_mode.send();
-        transport.produce(ProducerOptions::new(produce_type.into_kind(), rtp_parameters)).await
+        transport
+            .produce(ProducerOptions::new(
+                produce_type.into_kind(),
+                rtp_parameters,
+            ))
+            .await
     }
-    
-    pub async fn start_consume(&mut self, producer_id: ProducerId) -> Result<Consumer, ConsumeError> {
+
+    pub async fn start_consume(
+        &mut self,
+        producer_id: ProducerId,
+    ) -> Result<Consumer, ConsumeError> {
         let transport = self.transport_mode.recv();
         let mut options = ConsumerOptions::new(producer_id, self.rtp_capabilities.clone());
         options.paused = true;
@@ -200,7 +212,11 @@ impl RtcState {
         Ok(())
     }
 
-    pub async fn set_consumer_pause(&mut self, consumer_id: &ConsumerId, paused: bool) -> Result<(), ()> {
+    pub async fn set_consumer_pause(
+        &mut self,
+        consumer_id: &ConsumerId,
+        paused: bool,
+    ) -> Result<(), ()> {
         let consumer = self.consumers.get_mut(consumer_id).ok_or_else(|| ())?;
         match paused {
             true => consumer.pause().await.map_err(|_| ()),

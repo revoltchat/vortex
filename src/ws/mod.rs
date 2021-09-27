@@ -61,17 +61,20 @@ async fn handle(
                             .ok_or(WSCloseType::Unauthorized)?;
                         let id = user.read().await.id().to_string();
 
-                        ws_sink.send(
-                            WSReplyType::Authenticate {
-                                user_id: id.clone(),
-                                room_id: room.id().to_string(),
-                                rtp_capabilities: room
-                                    .router()
-                                    .ok_or(WSCloseType::RoomClosed)?
-                                    .rtp_capabilities()
-                                    .clone(),
-                            }.to_message(out.id)?
-                        ).await?;
+                        ws_sink
+                            .send(
+                                WSReplyType::Authenticate {
+                                    user_id: id.clone(),
+                                    room_id: room.id().to_string(),
+                                    rtp_capabilities: room
+                                        .router()
+                                        .ok_or(WSCloseType::RoomClosed)?
+                                        .rtp_capabilities()
+                                        .clone(),
+                                }
+                                .to_message(out.id)?,
+                            )
+                            .await?;
                         break (room, id);
                     } else {
                         return Err(WSCloseType::InvalidState);
@@ -98,9 +101,12 @@ async fn handle(
                             .map_err(|_| WSCloseType::ServerError)?;
                         let reply_data = rtc_state.get_init_data();
 
-                        ws_sink.send(
-                            WSReplyType::InitializeTransports { reply_data }.to_message(out.id)?
-                        ).await?;
+                        ws_sink
+                            .send(
+                                WSReplyType::InitializeTransports { reply_data }
+                                    .to_message(out.id)?,
+                            )
+                            .await?;
                         break rtc_state;
                     } else {
                         return Err(WSCloseType::InvalidState);
@@ -177,7 +183,7 @@ async fn event_loop(
                                     .get(user_id)
                                     .await
                                     .ok_or_else(|| WSCloseType::ServerError)?;
-                                
+
                                 let result = rtc_state.start_produce(produce_type, rtp_parameters.clone()).await;
                                 match result {
                                     Ok(producer) => {
@@ -185,7 +191,7 @@ async fn event_loop(
                                         let mut mut_user = user.write().await;
                                         mut_user.set_producer(*produce_type, Some(producer)).ok();
                                         room.send_event(RoomEvent::UserStartProduce(user_id.to_string(), *produce_type));
-                                        
+
                                         ws_sink.send(
                                             WSReplyType::StartProduce { producer_id }.to_message(out.id)?
                                         ).await?;
@@ -204,7 +210,7 @@ async fn event_loop(
                                     .get(user_id)
                                     .await
                                     .ok_or_else(|| WSCloseType::ServerError)?;
-                                
+
                                 let mut mut_user = user.write().await;
                                 match mut_user.get_producer(*produce_type) {
                                     Some(_) => {

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use strum::IntoStaticStr;
 use warp::ws::Message;
 
-use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
 use mediasoup::prelude::*;
+use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
 
 use crate::rtc::types::{ConnectTransportData, InitializationInput, TransportInitData};
 use crate::state::user::{ProduceType, UserInfo};
@@ -121,9 +121,7 @@ pub enum WSReplyType {
     SetConsumerPause,
 }
 
-impl WSReplyType {
-
-}
+impl WSReplyType {}
 
 #[derive(Serialize)]
 #[serde(tag = "type", content = "data")]
