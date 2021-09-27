@@ -311,6 +311,27 @@ async fn event_loop(
                                     }
                                 };
                             },
+                            WSCommandType::StopConsume { id } => {
+                                let id = id.clone();
+                                match rtc_state.stop_consume(&id) {
+                                    Ok(_) => {
+                                        let reply = WSReply {
+                                            id: out.id,
+                                            reply_type: WSReplyType::StopConsume,
+                                        };
+        
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&reply)?))
+                                            .await?;
+                                    },
+                                    Err(_) => {
+                                        let error = WSError::from_command(out, WSErrorType::ConsumerNotFound(id.to_string()));
+                                        ws_sink
+                                            .send(Message::text(serde_json::to_string(&error)?))
+                                            .await?;
+                                    }
+                                }
+                            },
                             _ => return Err(WSCloseType::InvalidState),
                         };
                     }

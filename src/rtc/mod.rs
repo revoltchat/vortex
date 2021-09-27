@@ -194,6 +194,11 @@ impl RtcState {
         self.consumers.insert(consumer.id(), consumer.clone());
         Ok(consumer)
     }
+
+    pub fn stop_consume(&mut self, consumer_id: &ConsumerId) -> Result<(), ()> {
+        let _ = self.consumers.remove(consumer_id).ok_or_else(|| ())?;
+        Ok(())
+    }
 }
 
 enum TransportMode {
