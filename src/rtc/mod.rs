@@ -199,6 +199,14 @@ impl RtcState {
         let _ = self.consumers.remove(consumer_id).ok_or_else(|| ())?;
         Ok(())
     }
+
+    pub async fn set_consumer_pause(&mut self, consumer_id: &ConsumerId, paused: bool) -> Result<(), ()> {
+        let consumer = self.consumers.get_mut(consumer_id).ok_or_else(|| ())?;
+        match paused {
+            true => consumer.pause().await.map_err(|_| ()),
+            false => consumer.resume().await.map_err(|_| ()),
+        }
+    }
 }
 
 enum TransportMode {
