@@ -1,8 +1,40 @@
 use serde::Serialize;
 use std::fmt::{self, Display};
 use strum::IntoStaticStr;
+use warp::ws::Message;
 
 use super::types::WSCommand;
+
+#[derive(Serialize)]
+pub struct WSError<'a> {
+    id: Option<String>,
+    #[serde(rename = "type")]
+    command_type: &'a str,
+    error: &'static str,
+    message: String,
+}
+
+impl<'a> WSError<'a> {
+    pub fn new(id: Option<String>, command_type: &'a str, error: WSErrorType) -> Self {
+        WSError {
+            id,
+            command_type,
+            message: error.to_string(),
+            error: error.into(),
+        }
+    }
+
+    pub fn from(command: WSCommand, error: WSErrorType) -> Self {
+        let id = command.id;
+        let command_type: &'static str = command.command_type.into();
+        WSError {
+            id,
+            command_type,
+            message: error.to_string(),
+            error: error.into(),
+        }
+    }
+}
 
 #[derive(IntoStaticStr)]
 pub enum WSErrorType {
@@ -15,6 +47,13 @@ pub enum WSErrorType {
 
     ConsumerFailure,
     ConsumerNotFound(String),
+}
+
+impl WSErrorType {
+    pub fn to_message(self, command: WSCommand) -> Result<Message, serde_json::Error> {
+        let error = WSError::from(command, self);
+        Ok(Message::text(serde_json::to_string(&error)?))
+    }
 }
 
 impl Display for WSErrorType {
@@ -75,36 +114,5 @@ impl From<serde_json::Error> for WSCloseType {
 impl From<warp::Error> for WSCloseType {
     fn from(_: warp::Error) -> WSCloseType {
         WSCloseType::ServerError
-    }
-}
-
-#[derive(Serialize)]
-pub struct WSError<'a> {
-    id: Option<String>,
-    #[serde(rename = "type")]
-    command_type: &'a str,
-    error: &'static str,
-    message: String,
-}
-
-impl<'a> WSError<'a> {
-    pub fn new(id: Option<String>, command_type: &'a str, error: WSErrorType) -> Self {
-        WSError {
-            id,
-            command_type,
-            message: error.to_string(),
-            error: error.into(),
-        }
-    }
-
-    pub fn from_command(command: WSCommand, error: WSErrorType) -> Self {
-        let id = command.id;
-        let command_type: &'static str = command.command_type.into();
-        WSError {
-            id,
-            command_type,
-            message: error.to_string(),
-            error: error.into(),
-        }
     }
 }

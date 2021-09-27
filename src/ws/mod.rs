@@ -21,7 +21,7 @@ mod error;
 mod types;
 
 use error::{WSCloseType, WSError, WSErrorType};
-use types::{WSCommand, WSCommandType, WSEvent, WSReply, WSReplyType};
+use types::{WSCommand, WSCommandType, WSEvent, WSReplyType};
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
     warp::ws::ws().map(|ws: Ws| ws.on_upgrade(on_connection))
@@ -61,9 +61,8 @@ async fn handle(
                             .ok_or(WSCloseType::Unauthorized)?;
                         let id = user.read().await.id().to_string();
 
-                        let reply = WSReply {
-                            id: out.id,
-                            reply_type: WSReplyType::Authenticate {
+                        ws_sink.send(
+                            WSReplyType::Authenticate {
                                 user_id: id.clone(),
                                 room_id: room.id().to_string(),
                                 rtp_capabilities: room
@@ -71,12 +70,8 @@ async fn handle(
                                     .ok_or(WSCloseType::RoomClosed)?
                                     .rtp_capabilities()
                                     .clone(),
-                            },
-                        };
-
-                        ws_sink
-                            .send(Message::text(serde_json::to_string(&reply)?))
-                            .await?;
+                            }.to_message(out.id)?
+                        ).await?;
                         break (room, id);
                     } else {
                         return Err(WSCloseType::InvalidState);
@@ -103,14 +98,9 @@ async fn handle(
                             .map_err(|_| WSCloseType::ServerError)?;
                         let reply_data = rtc_state.get_init_data();
 
-                        let reply = WSReply {
-                            id: out.id,
-                            reply_type: WSReplyType::InitializeTransports { reply_data },
-                        };
-
-                        ws_sink
-                            .send(Message::text(serde_json::to_string(&reply)?))
-                            .await?;
+                        ws_sink.send(
+                            WSReplyType::InitializeTransports { reply_data }.to_message(out.id)?
+                        ).await?;
                         break rtc_state;
                     } else {
                         return Err(WSCloseType::InvalidState);
@@ -155,19 +145,13 @@ async fn event_loop(
                             WSCommandType::ConnectTransport { connect_data } => {
                                 let result = rtc_state.connect_transport(connect_data).await;
                                 if let Ok(_) = result {
-                                    let reply = WSReply {
-                                        id: out.id,
-                                        reply_type: WSReplyType::ConnectTransport,
-                                    };
-
-                                    ws_sink
-                                        .send(Message::text(serde_json::to_string(&reply)?))
-                                        .await?;
+                                    ws_sink.send(
+                                        WSReplyType::ConnectTransport.to_message(out.id)?
+                                    ).await?;
                                 } else {
-                                    let error = WSError::from_command(out, WSErrorType::TransportConnectionFailure);
-                                    ws_sink
-                                        .send(Message::text(serde_json::to_string(&error)?))
-                                        .await?;
+                                    ws_sink.send(
+                                        WSErrorType::TransportConnectionFailure.to_message(out)?
+                                    ).await?;
                                 }
                             },
                             WSCommandType::RoomInfo => {
@@ -179,18 +163,13 @@ async fn event_loop(
                                     user_info.insert(user.id().to_string(), user.into_info());
                                 }
 
-                                let reply = WSReply {
-                                    id: out.id,
-                                    reply_type: WSReplyType::RoomInfo {
+                                ws_sink.send(
+                                    WSReplyType::RoomInfo {
                                         id: room.id().to_string(),
                                         video_allowed: false,
                                         users: user_info,
-                                    }
-                                };
-
-                                ws_sink
-                                    .send(Message::text(serde_json::to_string(&reply)?))
-                                    .await?;
+                                    }.to_message(out.id)?
+                                ).await?;
                             },
                             WSCommandType::StartProduce { produce_type, rtp_parameters } => {
                                 let users = room.users();
@@ -207,21 +186,15 @@ async fn event_loop(
                                         mut_user.set_producer(*produce_type, Some(producer)).ok();
                                         room.send_event(RoomEvent::UserStartProduce(user_id.to_string(), *produce_type));
                                         
-                                        let reply = WSReply {
-                                            id: out.id,
-                                            reply_type: WSReplyType::StartProduce { producer_id }
-                                        };
-        
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&reply)?))
-                                            .await?;
+                                        ws_sink.send(
+                                            WSReplyType::StartProduce { producer_id }.to_message(out.id)?
+                                        ).await?;
                                     },
                                     Err(err) => {
                                         error!("Error while trying to start produce for user {}: {:?}", user_id, err);
-                                        let error = WSError::from_command(out, WSErrorType::ProducerFailure);
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&error)?))
-                                            .await?;
+                                        ws_sink.send(
+                                            WSErrorType::ProducerFailure.to_message(out)?
+                                        ).await?;
                                     }
                                 }
                             },
@@ -237,21 +210,13 @@ async fn event_loop(
                                     Some(_) => {
                                         mut_user.set_producer(*produce_type, None).ok();
                                         room.send_event(RoomEvent::UserStopProduce(user_id.to_string(), *produce_type));
-                                        let reply = WSReply {
-                                            id: out.id,
-                                            reply_type: WSReplyType::StopProduce,
-                                        };
-        
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&reply)?))
-                                            .await?;
+                                        ws_sink.send(
+                                            WSReplyType::StopProduce.to_message(out.id)?
+                                        ).await?;
                                     },
-                                    None => {
-                                        let error = WSError::from_command(out, WSErrorType::ProducerNotFound);
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&error)?))
-                                            .await?;
-                                    }
+                                    None => ws_sink.send(
+                                        WSErrorType::ProducerNotFound.to_message(out)?
+                                    ).await?,
                                 }
                             },
                             WSCommandType::StartConsume { produce_type, user_id: producing_id } => {
@@ -265,92 +230,57 @@ async fn event_loop(
                                                 let router = room.router().ok_or_else(|| WSCloseType::ServerError)?;
                                                 if router.can_consume(&producer.id(), rtc_state.rtp_capabilities()) {
                                                     match rtc_state.start_consume(producer.id()).await {
-                                                        Ok(consumer) => {
-                                                            let reply = WSReply {
-                                                                id: out.id,
-                                                                reply_type: WSReplyType::StartConsume {
-                                                                    id: consumer.id(),
-                                                                    producer_id: consumer.producer_id(),
-                                                                    kind: consumer.kind(),
-                                                                    rtp_parameters: consumer.rtp_parameters().clone(),
-                                                                },
-                                                            };
-                            
-                                                            ws_sink
-                                                                .send(Message::text(serde_json::to_string(&reply)?))
-                                                                .await?;
-                                                        },
+                                                        Ok(consumer) => ws_sink.send(
+                                                            WSReplyType::StartConsume {
+                                                                id: consumer.id(),
+                                                                producer_id: consumer.producer_id(),
+                                                                kind: consumer.kind(),
+                                                                rtp_parameters: consumer.rtp_parameters().clone(),
+                                                            }.to_message(out.id)?
+                                                        ).await?,
                                                         Err(err) => {
                                                             error!("Error while trying to start produce: {:?}", err);
-                                                            let error = WSError::from_command(out, WSErrorType::ProducerFailure);
-                                                            ws_sink
-                                                                .send(Message::text(serde_json::to_string(&error)?))
-                                                                .await?;
+                                                            ws_sink.send(
+                                                                WSErrorType::ProducerFailure.to_message(out)?
+                                                            ).await?;
                                                         }
                                                     };
                                                 } else {
-                                                    let error = WSError::from_command(out, WSErrorType::ConsumerFailure);
-                                                    ws_sink
-                                                        .send(Message::text(serde_json::to_string(&error)?))
-                                                        .await?;
+                                                    ws_sink.send(
+                                                        WSErrorType::ConsumerFailure.to_message(out)?
+                                                    ).await?;
                                                 }
                                             },
-                                            None => {
-                                                let error = WSError::from_command(out, WSErrorType::ProducerNotFound);
-                                                ws_sink
-                                                    .send(Message::text(serde_json::to_string(&error)?))
-                                                    .await?;
-                                            }
+                                            None => ws_sink.send(
+                                                WSErrorType::ProducerNotFound.to_message(out)?
+                                            ).await?,
                                         }
                                     },
-                                    None => {
-                                        let error = WSError::from_command(out, WSErrorType::UserNotFound(producing_id));
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&error)?))
-                                            .await?;
-                                    }
+                                    None => ws_sink.send(
+                                        WSErrorType::UserNotFound(producing_id).to_message(out)?
+                                    ).await?,
                                 };
                             },
                             WSCommandType::StopConsume { id } => {
                                 let id = id.clone();
                                 match rtc_state.stop_consume(&id) {
-                                    Ok(_) => {
-                                        let reply = WSReply {
-                                            id: out.id,
-                                            reply_type: WSReplyType::StopConsume,
-                                        };
-        
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&reply)?))
-                                            .await?;
-                                    },
-                                    Err(_) => {
-                                        let error = WSError::from_command(out, WSErrorType::ConsumerNotFound(id.to_string()));
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&error)?))
-                                            .await?;
-                                    }
+                                    Ok(_) => ws_sink.send(
+                                        WSReplyType::StopConsume.to_message(out.id)?
+                                    ).await?,
+                                    Err(_) => ws_sink.send(
+                                        WSErrorType::ConsumerNotFound(id.to_string()).to_message(out)?
+                                    ).await?,
                                 }
                             },
                             WSCommandType::SetConsumerPause { id, paused } => {
                                 let id = id.clone();
                                 match rtc_state.set_consumer_pause(&id, *paused).await {
-                                    Ok(_) => {
-                                        let reply = WSReply {
-                                            id: out.id,
-                                            reply_type: WSReplyType::SetConsumerPause,
-                                        };
-
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&reply)?))
-                                            .await?;
-                                    },
-                                    Err(_) => {
-                                        let error = WSError::from_command(out, WSErrorType::ConsumerNotFound(id.to_string()));
-                                        ws_sink
-                                            .send(Message::text(serde_json::to_string(&error)?))
-                                            .await?;
-                                    }
+                                    Ok(_) => ws_sink.send(
+                                        WSReplyType::SetConsumerPause.to_message(out.id)?
+                                    ).await?,
+                                    Err(_) => ws_sink.send(
+                                        WSErrorType::ConsumerNotFound(id.to_string()).to_message(out)?
+                                    ).await?,
                                 }
                             },
                             _ => return Err(WSCloseType::InvalidState),

@@ -1,12 +1,20 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::IntoStaticStr;
+use warp::ws::Message;
 
 use mediasoup::rtp_parameters::{MediaKind, RtpCapabilitiesFinalized, RtpParameters};
 use mediasoup::prelude::*;
 
 use crate::rtc::types::{ConnectTransportData, InitializationInput, TransportInitData};
 use crate::state::user::{ProduceType, UserInfo};
+
+#[derive(Deserialize)]
+pub struct WSCommand {
+    pub id: Option<String>,
+    #[serde(flatten)]
+    pub command_type: WSCommandType,
+}
 
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
@@ -54,11 +62,22 @@ pub enum WSCommandType {
     },
 }
 
-#[derive(Deserialize)]
-pub struct WSCommand {
+impl WSReplyType {
+    pub fn to_message(self, command_id: Option<String>) -> Result<Message, serde_json::Error> {
+        let reply = WSReply {
+            id: command_id,
+            reply_type: self,
+        };
+
+        Ok(Message::text(serde_json::to_string(&reply)?))
+    }
+}
+
+#[derive(Serialize)]
+pub struct WSReply {
     pub id: Option<String>,
     #[serde(flatten)]
-    pub command_type: WSCommandType,
+    pub reply_type: WSReplyType,
 }
 
 #[derive(Serialize)]
@@ -102,11 +121,8 @@ pub enum WSReplyType {
     SetConsumerPause,
 }
 
-#[derive(Serialize)]
-pub struct WSReply {
-    pub id: Option<String>,
-    #[serde(flatten)]
-    pub reply_type: WSReplyType,
+impl WSReplyType {
+
 }
 
 #[derive(Serialize)]
