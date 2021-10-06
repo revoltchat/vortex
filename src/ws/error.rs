@@ -7,7 +7,7 @@ use super::types::WSCommand;
 
 #[derive(Serialize)]
 pub struct WSError<'a> {
-    id: Option<String>,
+    id: Option<u64>,
     #[serde(rename = "type")]
     command_type: &'a str,
     error: &'static str,
@@ -15,7 +15,7 @@ pub struct WSError<'a> {
 }
 
 impl<'a> WSError<'a> {
-    pub fn new(id: Option<String>, command_type: &'a str, error: WSErrorType) -> Self {
+    pub fn new(id: Option<u64>, command_type: &'a str, error: WSErrorType) -> Self {
         WSError {
             id,
             command_type,
@@ -101,7 +101,8 @@ impl Display for WSCloseType {
 }
 
 impl From<serde_json::Error> for WSCloseType {
-    fn from(_: serde_json::Error) -> WSCloseType {
+    fn from(err: serde_json::Error) -> WSCloseType {
+        error!("{:?}", err);
         WSCloseType::InvalidData
     }
 }

@@ -17,8 +17,11 @@ pub struct InitializationInput {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "mode")]
 pub enum InitializationInputMode {
+    #[serde(rename = "SplitWebRTC")]
     SplitWebRtc,
+    #[serde(rename = "CombinedWebRTC")]
     CombinedWebRtc,
+    #[serde(rename = "CombinedRTP")]
     CombinedRtp,
 }
 

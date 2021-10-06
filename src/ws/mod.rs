@@ -94,22 +94,24 @@ async fn handle(
                 // Try to get the text message, ignore otherwise (might be ping, binary)
                 if let Ok(text) = message.to_str() {
                     let out: WSCommand = serde_json::from_str(text)?;
-                    if let WSCommandType::InitializeTransports { init_data } = out.command_type {
-                        let router = room.router().ok_or(WSCloseType::RoomClosed)?;
-                        let rtc_state = RtcState::initialize(router, init_data)
-                            .await
-                            .map_err(|_| WSCloseType::ServerError)?;
-                        let reply_data = rtc_state.get_init_data();
+                    match out.command_type {
+                        WSCommandType::InitializeTransports { init_data } => {
+                            let router = room.router().ok_or(WSCloseType::RoomClosed)?;
+                            let rtc_state = RtcState::initialize(router, init_data)
+                                .await
+                                .map_err(|_| WSCloseType::ServerError)?;
+                            let reply_data = rtc_state.get_init_data();
 
-                        ws_sink
-                            .send(
-                                WSReplyType::InitializeTransports { reply_data }
-                                    .to_message(out.id)?,
-                            )
-                            .await?;
-                        break rtc_state;
-                    } else {
-                        return Err(WSCloseType::InvalidState);
+                            ws_sink
+                                .send(
+                                    WSReplyType::InitializeTransports { reply_data }
+                                        .to_message(out.id)?,
+                                )
+                                .await?;
+                            break rtc_state;
+                        },
+                        WSCommandType::RoomInfo => room_info(out, &room, ws_sink).await?,
+                        _ => return Err(WSCloseType::InvalidState),
                     }
                 }
             }
@@ -160,23 +162,7 @@ async fn event_loop(
                                     ).await?;
                                 }
                             },
-                            WSCommandType::RoomInfo => {
-                                let users = room.users();
-                                let guard = users.guard().await;
-                                let mut user_info: HashMap<String, UserInfo> = HashMap::new();
-                                for user in guard.iter() {
-                                    let user = user.read().await;
-                                    user_info.insert(user.id().to_string(), user.into_info());
-                                }
-
-                                ws_sink.send(
-                                    WSReplyType::RoomInfo {
-                                        id: room.id().to_string(),
-                                        video_allowed: false,
-                                        users: user_info,
-                                    }.to_message(out.id)?
-                                ).await?;
-                            },
+                            WSCommandType::RoomInfo => room_info(out, room, ws_sink).await?,
                             WSCommandType::StartProduce { produce_type, rtp_parameters } => {
                                 let users = room.users();
                                 let user = users
@@ -340,4 +326,23 @@ async fn event_loop(
             }
         }
     }
+}
+
+async fn room_info(c: WSCommand, room: &Arc<Room>, ws_sink: &mut SplitSink<WebSocket, Message>) -> Result<(), WSCloseType> {
+    let users = room.users();
+    let guard = users.guard().await;
+    let mut user_info: HashMap<String, UserInfo> = HashMap::new();
+    for user in guard.iter() {
+        let user = user.read().await;
+        user_info.insert(user.id().to_string(), user.into_info());
+    }
+
+    ws_sink.send(
+        WSReplyType::RoomInfo {
+            id: room.id().to_string(),
+            video_allowed: false,
+            users: user_info,
+        }.to_message(c.id)?
+    ).await?;
+    Ok(())
 }

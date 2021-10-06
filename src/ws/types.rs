@@ -11,7 +11,7 @@ use crate::state::user::{ProduceType, UserInfo};
 
 #[derive(Deserialize)]
 pub struct WSCommand {
-    pub id: Option<String>,
+    pub id: Option<u64>,
     #[serde(flatten)]
     pub command_type: WSCommandType,
 }
@@ -38,16 +38,19 @@ pub enum WSCommandType {
 
     #[serde(rename_all = "camelCase")]
     StartProduce {
+        #[serde(rename = "type")]
         produce_type: ProduceType,
         rtp_parameters: RtpParameters,
     },
     #[serde(rename_all = "camelCase")]
     StopProduce {
+        #[serde(rename = "type")]
         produce_type: ProduceType,
     },
 
     #[serde(rename_all = "camelCase")]
     StartConsume {
+        #[serde(rename = "type")]
         produce_type: ProduceType,
         user_id: String,
     },
@@ -63,7 +66,7 @@ pub enum WSCommandType {
 }
 
 impl WSReplyType {
-    pub fn to_message(self, command_id: Option<String>) -> Result<Message, serde_json::Error> {
+    pub fn to_message(self, command_id: Option<u64>) -> Result<Message, serde_json::Error> {
         let reply = WSReply {
             id: command_id,
             reply_type: self,
@@ -75,14 +78,13 @@ impl WSReplyType {
 
 #[derive(Serialize)]
 pub struct WSReply {
-    pub id: Option<String>,
+    pub id: Option<u64>,
     #[serde(flatten)]
     pub reply_type: WSReplyType,
 }
 
 #[derive(Serialize)]
 #[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase")]
 pub enum WSReplyType {
     #[serde(rename_all = "camelCase")]
     Authenticate {
@@ -125,7 +127,6 @@ impl WSReplyType {}
 
 #[derive(Serialize)]
 #[serde(tag = "type", content = "data")]
-#[serde(rename_all = "camelCase")]
 pub enum WSEvent {
     UserJoined {
         id: String,
