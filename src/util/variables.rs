@@ -27,6 +27,16 @@ lazy_static! {
             if let Some(ip) = iter.next() {
                 let ip = IpAddr::from_str(&ip).expect("Not a valid listen IP");
                 let announced_ip = iter.next().map(|ip| IpAddr::from_str(&ip).expect("Not a valid announcement IP"));
+                if ip.is_unspecified() && announced_ip.is_none() {
+                    panic!("RTC announcement IP must be specified when listen IP is 0.0.0.0");
+                }
+
+                if let Some(announced_ip) = announced_ip {
+                    if announced_ip.is_unspecified() {
+                        panic!("RTC announcement IP must not be 0.0.0.0");
+                    }
+                }
+
                 ip_vec.push(TransportListenIp {
                     ip, announced_ip,
                 });
