@@ -27,12 +27,7 @@ impl<'a> WSError<'a> {
     pub fn from(command: WSCommand, error: WSErrorType) -> Self {
         let id = command.id;
         let command_type: &'static str = command.command_type.into();
-        WSError {
-            id,
-            command_type,
-            message: error.to_string(),
-            error: error.into(),
-        }
+        WSError::new(id, command_type, error)
     }
 }
 

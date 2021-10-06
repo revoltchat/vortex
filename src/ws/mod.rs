@@ -20,7 +20,7 @@ use crate::{
 mod error;
 mod types;
 
-use error::{WSCloseType, WSError, WSErrorType};
+use error::{WSCloseType, WSErrorType};
 use types::{WSCommand, WSCommandType, WSEvent, WSReplyType};
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Copy {
