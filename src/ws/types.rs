@@ -88,6 +88,8 @@ pub struct WSReply {
 pub enum WSReplyType {
     #[serde(rename_all = "camelCase")]
     Authenticate {
+        #[serde(rename = "version")]
+        vortex_version: &'static str,
         user_id: String,
         room_id: String,
         rtp_capabilities: RtpCapabilitiesFinalized,

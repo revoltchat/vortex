@@ -64,6 +64,7 @@ async fn handle(
                         ws_sink
                             .send(
                                 WSReplyType::Authenticate {
+                                    vortex_version: crate::info::VORTEX_VERSION,
                                     user_id: id.clone(),
                                     room_id: room.id().to_string(),
                                     rtp_capabilities: room

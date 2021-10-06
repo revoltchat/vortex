@@ -1,6 +1,8 @@
 use crate::util::variables;
 use serde::Serialize;
 
+pub static VORTEX_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 #[derive(Serialize)]
 pub struct Info {
     vortex: &'static str,
@@ -19,7 +21,7 @@ pub fn get_info() -> Info {
     };
 
     Info {
-        vortex: env!("CARGO_PKG_VERSION"),
+        vortex: VORTEX_VERSION,
         features,
         ws: &variables::WS_URL,
     }
