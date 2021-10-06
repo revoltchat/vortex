@@ -1,5 +1,5 @@
 # Build Stage
-FROM rust:latest AS build
+FROM rust:1.55 AS build
 USER 0:0
 WORKDIR /home/rust
 
@@ -14,7 +14,7 @@ COPY src ./src
 RUN cargo install --locked --path .
 
 # Bundle Stage
-FROM debian:buster-slim
+FROM debian:bullseye
 
 COPY --from=build /usr/local/cargo/bin/vortex ./vortex
 
