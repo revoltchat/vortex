@@ -29,10 +29,18 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
     let user_routes = warp::path("room").and(user::route());
 
     let routes = room_routes.or(user_routes);
+    let log = warp::filters::log::custom(|info| {
+        info!("{} {}: {}",
+            info.method(),
+            info.path(),
+            info.status(),
+        );
+    });
 
     authorize()
         .untuple_one()
         .and(routes)
         .recover(error::handle_rejection)
+        .with(log)
         .boxed()
 }
