@@ -1,0 +1,69 @@
+name: Docker
+
+on:
+    push:
+        branches:
+            - "master"
+            - "patch-1"
+        tags:
+            - "*"
+        paths-ignore:
+            - ".github/**"
+            - "!.github/workflows/docker.yml"
+            - ".vscode/**"
+            - ".gitignore"
+            - ".gitlab-ci.yml"
+            - "LICENSE"
+            - "README"
+    pull_request:
+        branches:
+            - "master"
+        paths:
+            - "Dockerfile"
+    workflow_dispatch:
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                architecture: [amd64,arm64]
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v2
+              with:
+                  submodules: "recursive"
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v1
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v1
+            - name: Cache Docker layers
+              uses: actions/cache@v2
+              with:
+                path: /tmp/.buildx-cache/${{ matrix.architecture }}
+                key: ${{ runner.os }}-buildx-linux/${{ matrix.architecture }}-${{ github.sha }}
+            - name: Docker meta
+              id: meta
+              uses: docker/metadata-action@v3
+              with:
+                    images: ghcr.io/redstonewizard08/vortex
+            - name: Login to Github Container Registry
+              uses: docker/login-action@v1
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build and publish
+              uses: docker/build-push-action@v2
+              with:
+                  context: .
+                  push: true
+                  platforms: ${{ matrix.architecture }}
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=local,src=/tmp/.buildx-cache/${{ matrix.architecture }}
+                  cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+            - name: Move cache
+              run: |
+               rm -rf /tmp/.buildx-cache
+               mv /tmp/.buildx-cache-new /tmp/.buildx-cache
