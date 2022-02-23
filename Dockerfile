@@ -1,5 +1,5 @@
 # Build Stage
-FROM rust:1.55 AS build
+FROM rust:1.55-buster AS build
 USER 0:0
 WORKDIR /home/rust
 
@@ -7,7 +7,9 @@ RUN USER=root cargo new --bin vortex
 WORKDIR /home/rust/vortex
 
 COPY Cargo.toml Cargo.lock ./
-RUN cargo build --locked --release
+RUN apt-get update && \
+    apt-get -y install python3 python3-pip && \
+    cargo build --locked --release
 
 RUN rm src/*.rs target/release/deps/vortex*
 COPY src ./src
