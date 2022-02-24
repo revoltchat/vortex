@@ -8,7 +8,9 @@ WORKDIR /home/rust/vortex
 
 COPY Cargo.toml Cargo.lock ./
 RUN apt-get update && \
-    apt-get -y install python3 python3-pip && \
+    apt-get -y install python3 python3-pip \
+    build-essential g++ gcc clang cmake make \
+    ninja-build && \
     cargo build --locked --release
 
 RUN rm src/*.rs target/release/deps/vortex*
