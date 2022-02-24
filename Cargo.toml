@@ -34,4 +34,4 @@ serde_json = "1.0"
 strum = { version = "0.23", features = ["derive"] }
 
 # RTC
-mediasoup = "0.9.1"
+mediasoup = "0.9.2"
