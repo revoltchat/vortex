@@ -35,3 +35,4 @@ strum = { version = "0.23", features = ["derive"] }
 
 # RTC
 mediasoup = "0.9.2"
+mediasoup-sys = "0.3.2"

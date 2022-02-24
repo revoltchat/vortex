@@ -650,9 +650,9 @@ dependencies = [
 
 [[package]]
 name = "mediasoup-sys"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0863bd27d4cd1825545c9a5ea44614545027cb07751a32f71c4b6cfb5f9aaad"
+checksum = "c83eda72bddffb50bd363b3d598a9c4634f7458be4b5ec67c459b38237b6d301"
 
 [[package]]
 name = "memchr"
@@ -1387,6 +1387,7 @@ dependencies = [
  "lazy_static",
  "log",
  "mediasoup",
+ "mediasoup-sys",
  "once_cell",
  "rand",
  "serde",
