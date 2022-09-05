@@ -11,7 +11,7 @@ use super::{
 };
 
 /// User capabilities
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct UserCapabilities {
     pub audio: bool,
     pub video: bool,
@@ -19,6 +19,7 @@ pub struct UserCapabilities {
 }
 
 /// User Information
+#[derive(Debug)]
 pub struct UserInformation {
     pub id: String,
     pub capabilities: UserCapabilities,
@@ -89,6 +90,7 @@ async fn handle_connection((mut read, write): ReadWritePair, auth: Arc<AuthFn>) 
 
                     // Create a new client
                     client = Some(Client::new(user, room_id));
+                    break;
                 }
             }
         }

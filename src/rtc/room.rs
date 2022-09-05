@@ -5,15 +5,17 @@ use postage::{
     broadcast::{channel, Receiver, Sender},
     sink::Sink,
 };
+use webrtc::track::track_local::{track_local_static_rtp::TrackLocalStaticRTP, TrackLocal};
 
-use crate::signaling::packets::RemoteTrack;
+use crate::signaling::packets::{MediaType, RemoteTrack};
 
 use super::peer::PeerTrackMap;
 
 /// Room event which indicates something happened to a peer
 #[derive(Debug, Clone)]
 pub enum RoomEvent {
-    Test,
+    CreateTrack(RemoteTrack),
+    RemoveTrack { removed_tracks: Vec<String> },
 }
 
 /// Room consisting of clients which can communicate with one another
@@ -23,6 +25,7 @@ pub struct Room {
     id: String,
     sender: Sender<RoomEvent>,
     user_tracks: DashMap<String, PeerTrackMap>,
+    tracks: DashMap<String, Arc<TrackLocalStaticRTP>>,
 }
 
 lazy_static! {
@@ -38,6 +41,7 @@ impl Room {
             id,
             sender,
             user_tracks: Default::default(),
+            tracks: Default::default(),
         }
     }
 
@@ -55,6 +59,7 @@ impl Room {
 
     /// Publish an event to the room
     pub fn publish(&self, event: RoomEvent) {
+        info!("Room {} emitted {:?}", self.id, event);
         self.sender.clone().try_send(event).ok();
     }
 
@@ -65,7 +70,18 @@ impl Room {
 
     /// Get all currently availabe tracks which can be consumed
     pub fn get_available_tracks(&self) -> Vec<RemoteTrack> {
-        vec![]
+        let mut tracks = vec![];
+
+        for item in &self.user_tracks {
+            let user_id = item.key();
+            tracks.extend(item.value().iter().map(|item| RemoteTrack {
+                id: item.value().to_owned(),
+                media_type: item.key().clone(),
+                user_id: user_id.to_owned(),
+            }));
+        }
+
+        tracks
     }
 
     /// Check if a user is in a room
@@ -75,13 +91,51 @@ impl Room {
 
     /// Join a new user into the room
     pub fn join_user(&self, id: String, track_map: PeerTrackMap) {
+        // TODO: announce join
         self.user_tracks.insert(id, track_map);
     }
 
     /// Remove a user from the room
     pub fn remove_user(&self, id: &str) {
-        self.user_tracks.remove(id);
-        // TODO: announce removal of tracks and remove from tracks once added
+        dbg!(&self.user_tracks.get(id));
+
+        // Find all associated track information
+        if let Some((_, tracks)) = self.user_tracks.remove(id) {
+            let removed_tracks = tracks
+                .iter()
+                .map(|item| item.value().to_owned())
+                .collect::<Vec<String>>();
+
+            for id in &removed_tracks {
+                self.tracks.remove(id);
+            }
+
+            self.publish(RoomEvent::RemoveTrack { removed_tracks });
+        }
+
         // TODO: if room is empty, clean up room
+    }
+
+    /// Add a local track
+    pub fn add_track(
+        &self,
+        user_id: String,
+        media_type: MediaType,
+        local_track: Arc<TrackLocalStaticRTP>,
+    ) {
+        let id = local_track.id().to_owned();
+        info!("{user_id} started broadcasting track with ID {id} to all users");
+
+        self.tracks.insert(id.to_owned(), local_track);
+        self.publish(RoomEvent::CreateTrack(RemoteTrack {
+            id,
+            user_id,
+            media_type,
+        }));
+    }
+
+    /// Get a local track
+    pub fn get_track(&self, id: &str) -> Option<Arc<TrackLocalStaticRTP>> {
+        self.tracks.get(id).map(|value| value.clone())
     }
 }

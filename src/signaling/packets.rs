@@ -74,6 +74,8 @@ pub enum PacketS2C {
 pub enum ServerError {
     #[error("This room ID does not exist.")]
     RoomNotFound,
+    #[error("This track ID does not exist.")]
+    TrackNotFound,
     #[error("Something went wrong trying to authenticate you.")]
     FailedToAuthenticate,
     #[error("Already connected to a room!")]
@@ -82,6 +84,17 @@ pub enum ServerError {
     NotConnected,
     #[error("Media type already has an existing track!")]
     MediaTypeSatisfied,
+}
+
+impl std::fmt::Display for MediaType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            MediaType::Audio => write!(f, "Audio"),
+            MediaType::Video => write!(f, "Video"),
+            MediaType::ScreenAudio => write!(f, "ScreenAudio"),
+            MediaType::ScreenVideo => write!(f, "ScreenVideo"),
+        }
+    }
 }
 
 impl PacketC2S {
