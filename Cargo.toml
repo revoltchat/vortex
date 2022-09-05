@@ -1,0 +1,28 @@
+[package]
+name = "vortex"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Error Handling
+anyhow = "1.0.63"
+thiserror = "1.0.33"
+
+# WebRTC
+webrtc = "0.4.0"
+
+# Serde
+serde_json = "1.0.85"
+serde = { version = "1.0.144", features = ["derive"] }
+
+# Async
+futures = "0.3.24"
+async-broadcast = "0.4.1"
+tokio-tungstenite = "0.17.2"
+tokio = { version = "1.21.0", features = ["full"] }
+
+# Lang
+dashmap = "5.4.0"
+lazy_static = "1.4.0"
