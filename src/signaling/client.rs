@@ -44,6 +44,7 @@ impl Client {
         result
     }
 
+    /// Listen for incoming packets
     pub async fn lifecycle_listen(&mut self, stream: ReadWritePair) -> Result<()> {
         // Deconstruct read / write pair
         let (mut read, write) = stream;

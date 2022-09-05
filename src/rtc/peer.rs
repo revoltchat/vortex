@@ -14,6 +14,7 @@ mod negotiation;
 
 pub type PeerTrackMap = Arc<DashMap<MediaType, String>>;
 
+/// Abstraction of a WebRTC peer connection
 // #[derive(Clone)]
 pub struct Peer {
     room: Arc<Room>,
