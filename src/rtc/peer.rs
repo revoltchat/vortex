@@ -32,6 +32,7 @@ pub struct Peer {
     track_list: Arc<DashMap<String, Monitor>>,
     negotiation_state: Arc<NegotiationState>,
     negotation_fn: Arc<NegotiationFn>,
+    media_type_buffer: Arc<Mutex<Vec<MediaType>>>,
 }
 
 impl Peer {
@@ -57,6 +58,7 @@ impl Peer {
             track_list: Default::default(),
             negotiation_state: Default::default(),
             negotation_fn: Arc::new(negotation_fn),
+            media_type_buffer: Default::default(),
         };
 
         // Register event handlers

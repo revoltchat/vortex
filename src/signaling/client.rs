@@ -13,7 +13,7 @@ use crate::rtc::{
 };
 
 use super::{
-    packets::{MediaType, Negotiation, PacketC2S, PacketS2C, ServerError},
+    packets::{Negotiation, PacketC2S, PacketS2C, ServerError},
     sender::{ReadWritePair, Sender},
     server::UserInformation,
 };
@@ -147,50 +147,12 @@ impl Client {
     }
 
     /// Handle incoming packet
-    async fn handle_message(&self, packet: PacketC2S, write: &Sender) -> Result<()> {
+    async fn handle_message(&self, packet: PacketC2S, _write: &Sender) -> Result<()> {
         debug!("C->S: {:?}", packet);
         let peer = self.peer.as_ref().unwrap();
 
         match packet {
             PacketC2S::Connect { .. } => Err(ServerError::AlreadyConnected.into()),
-            PacketC2S::RequestTrack {
-                audio,
-                video,
-                screen_audio,
-                screen_video,
-            } => {
-                // Keep track of all the IDs being registered
-                let mut tracks = vec![];
-
-                // Register audio track
-                if let Some(id) = audio {
-                    peer.register_track(id.to_owned(), MediaType::Audio).await?;
-                    tracks.push(id);
-                }
-
-                // Register video track
-                if let Some(id) = video {
-                    peer.register_track(id.to_owned(), MediaType::Video).await?;
-                    tracks.push(id);
-                }
-
-                // Register screenshare audio track
-                if let Some(id) = screen_audio {
-                    peer.register_track(id.to_owned(), MediaType::ScreenAudio)
-                        .await?;
-                    tracks.push(id);
-                }
-
-                // Register screenshare video track
-                if let Some(id) = screen_video {
-                    peer.register_track(id.to_owned(), MediaType::ScreenVideo)
-                        .await?;
-                    tracks.push(id);
-                }
-
-                // Confirm said IDs back to the user
-                write.send(PacketS2C::Continue { tracks }).await
-            }
             PacketC2S::Continue { tracks } => {
                 for id in tracks {
                     peer.add_track(id).await?;
@@ -208,7 +170,11 @@ impl Client {
             }
             PacketC2S::Negotiation(negotiation) => {
                 match negotiation {
-                    Negotiation::SDP { description } => {
+                    Negotiation::SDP {
+                        description,
+                        media_type_buffer,
+                    } => {
+                        peer.extend_media_type_buffer(media_type_buffer).await;
                         peer.consume_sdp(description).await?;
                     }
                     Negotiation::ICE { candidate } => {

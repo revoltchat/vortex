@@ -7,7 +7,7 @@ use webrtc::{
 };
 
 /// Available types of media tracks
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum MediaType {
     /// Audio stream
     Audio,
@@ -48,7 +48,10 @@ pub struct ICECandidate {
 #[serde(untagged)]
 pub enum Negotiation {
     /// Session Description
-    SDP { description: RTCSessionDescription },
+    SDP {
+        description: RTCSessionDescription,
+        media_type_buffer: Option<Vec<MediaType>>,
+    },
     /// ICE Candidate
     ICE { candidate: ICECandidate },
 }
@@ -63,17 +66,6 @@ pub enum PacketC2S {
         room_id: String,
         /// Authentication token
         token: String,
-    },
-    /// Give the server track IDs of the type of media we want to start producing
-    RequestTrack {
-        /// Request a new audio track
-        audio: Option<String>,
-        /// Request a new video track
-        video: Option<String>,
-        /// Request a new screenshare audio track
-        screen_audio: Option<String>,
-        /// Request a new screenshare video track
-        screen_video: Option<String>,
     },
     /// Tell the server to send tracks
     Continue {
@@ -104,11 +96,6 @@ pub enum PacketS2C {
     Announce {
         /// Newly created remote track
         track: RemoteTrack,
-    },
-    /// Tell the client to send tracks
-    Continue {
-        /// IDs of tracks the server wants
-        tracks: Vec<String>,
     },
     /// Tell the client certain tracks are no longer available
     Remove {

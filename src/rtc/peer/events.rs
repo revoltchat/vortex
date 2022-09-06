@@ -52,7 +52,9 @@ impl Peer {
             .on_negotiation_needed(Box::new(move || {
                 let peer_negotiation = peer_negotiation.clone();
                 Box::pin(async move {
-                    peer_negotiation.renegotiate().await;
+                    if let Err(error) = peer_negotiation.renegotiate().await {
+                        error!("Failed to re-negotiate: {}", error.to_string());
+                    }
                 })
             }))
             .await;
@@ -88,15 +90,26 @@ impl Peer {
                             let id = track.id().await;
 
                             // Find the media type
-                            let track_map = peer.track_map.lock().await;
-                            let item = track_map.iter().find(|(_, item_id)| item_id == &&id).map(|(media_type, _)| media_type.to_owned());
+                            let mut media_type_buffer = peer.media_type_buffer.lock().await;
+                            let item = if media_type_buffer.is_empty() {
+                                None
+                            } else {
+                                Some(media_type_buffer.remove(0))
+                            };
 
                             // Release Mutex lock
-                            drop(track_map);
+                            drop(media_type_buffer);
 
                             if let Some(media_type) =
                                 item
                             {
+                                // Write the media type
+                                let mut track_map = peer.track_map.lock().await;
+                                track_map.insert(media_type.clone(), id.to_owned());
+
+                                // Release Mutex lock
+                                drop(track_map);
+
                                 if let MediaType::Video = media_type {
                                     // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
                                     // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
@@ -123,7 +136,7 @@ impl Peer {
                                         }
                                     });
                                 }
-
+                                
                                 // Create track that we send video back through
                                 let local_track = Arc::new(TrackLocalStaticRTP::new(
                                     track.codec().await.capability,
@@ -153,6 +166,8 @@ impl Peer {
                                         }
                                     }
                                 }
+                            } else {
+                                error!("Stream sent by {} has no media type for ID {}", peer.user_id, id);
                             }
                         });
                     }

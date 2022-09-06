@@ -20,7 +20,7 @@ use webrtc::{
     },
 };
 
-use crate::signaling::packets::Negotiation;
+use crate::signaling::packets::{MediaType, Negotiation};
 
 use super::Peer;
 
@@ -40,42 +40,39 @@ pub type NegotiationFn = Box<
 >;
 
 impl Peer {
-    /// Create a new local description
-    /// This is equivalent to calling "set_local_description()"
-    pub async fn set_new_local_description(&self) -> Result<()> {
-        // Create an answer
-        // We have to do this ourselves because "set_local_description"
-        // does not accept an optional description parameter
-        let answer = self.connection.create_answer(None).await?;
-
-        // Set the local description based on this answer
-        self.connection
-            .set_local_description(answer.clone())
-            .await?;
-
-        // Send an answer back
-        (self.negotation_fn)(Negotiation::SDP {
-            description: answer,
-        })
-        .await
-    }
-
     /// Renegotiate the current connection
-    pub async fn renegotiate(&self) {
-        // Signal that we are currently creating an offer
+    pub async fn renegotiate(&self) -> Result<()> {
+        // TODO: not sure if required
+        // ignore for now
+
+        /* // Signal that we are currently creating an offer
         self.negotiation_state
             .making_offer
             .store(true, Ordering::SeqCst);
 
-        // Create a new local description
-        if let Err(err) = self.set_new_local_description().await {
-            error!("Encountered an error re-negotiating: {}", err.to_string());
-        }
+        // Create an offer
+        let offer = self.connection.create_offer(None).await?;
+
+        // Set the local description based on this offer
+        self.connection.set_local_description(offer.clone()).await?;
+
+        // Send an answer back
+        (self.negotation_fn)(Negotiation::SDP { description: offer }).await?;
 
         // Mark as complete
         self.negotiation_state
             .making_offer
-            .store(false, Ordering::SeqCst);
+            .store(false, Ordering::SeqCst); */
+
+        Ok(())
+    }
+
+    /// Add media types to the media type buffer
+    pub async fn extend_media_type_buffer(&self, buffer: Option<Vec<MediaType>>) {
+        if let Some(buffer) = buffer {
+            let mut media_type_buffer = self.media_type_buffer.lock().await;
+            media_type_buffer.extend(buffer.into_iter());
+        }
     }
 
     /// Consume a given RTC session description
@@ -98,6 +95,7 @@ impl Peer {
             .store(offer_collision, Ordering::Relaxed);
 
         if offer_collision {
+            warn!("Unexpected offer received from the client!");
             return Ok(());
         }
 
@@ -116,8 +114,20 @@ impl Peer {
 
         // If we received an offer, send an answer back
         if sdp_type == RTCSdpType::Offer {
-            // Create a new local description
-            self.set_new_local_description().await?;
+            // Create an answer
+            let answer = self.connection.create_answer(None).await?;
+
+            // Set the local description based on this answer
+            self.connection
+                .set_local_description(answer.clone())
+                .await?;
+
+            // Send an answer back
+            (self.negotation_fn)(Negotiation::SDP {
+                description: answer,
+                media_type_buffer: None,
+            })
+            .await?;
         }
 
         Ok(())
