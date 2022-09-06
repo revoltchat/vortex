@@ -16,6 +16,8 @@ use super::peer::PeerTrackMap;
 pub enum RoomEvent {
     CreateTrack(RemoteTrack),
     RemoveTrack { removed_tracks: Vec<String> },
+    UserJoin { user_id: String },
+    UserLeft { user_id: String },
 }
 
 /// Room consisting of clients which can communicate with one another
@@ -86,6 +88,14 @@ impl Room {
         tracks
     }
 
+    /// Get all user IDs currently in the room
+    pub fn get_user_ids(&self) -> Vec<String> {
+        self.user_tracks
+            .iter()
+            .map(|item| item.key().to_owned())
+            .collect()
+    }
+
     /// Check if a user is in a room
     pub fn in_room(&self, id: &str) -> bool {
         self.user_tracks.contains_key(id)
@@ -93,7 +103,12 @@ impl Room {
 
     /// Join a new user into the room
     pub fn join_user(&self, id: String, track_map: PeerTrackMap) {
-        // TODO: announce join
+        // Let everyone know we joined
+        self.publish(RoomEvent::UserJoin {
+            user_id: id.to_owned(),
+        });
+
+        // Add tracks to map
         self.user_tracks.insert(id, track_map);
     }
 
@@ -116,6 +131,11 @@ impl Room {
 
             self.publish(RoomEvent::RemoveTrack { removed_tracks });
         }
+
+        // Let everyone know we left
+        self.publish(RoomEvent::UserLeft {
+            user_id: id.to_owned(),
+        });
 
         // TODO: if room is empty, clean up room
     }

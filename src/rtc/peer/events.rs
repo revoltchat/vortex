@@ -128,7 +128,7 @@ impl Peer {
                                 let local_track = Arc::new(TrackLocalStaticRTP::new(
                                     track.codec().await.capability,
                                     id.to_owned(),
-                                    format!("{media_type}:{id}"),
+                                    format!("{}:{}:{id}", peer.user_id, media_type),
                                 ));
 
                                 // Send to other peers

@@ -97,6 +97,8 @@ pub enum PacketS2C {
     Accept {
         /// Currently available tracks
         available_tracks: Vec<RemoteTrack>,
+        /// Users currently in the room
+        user_ids: Vec<String>,
     },
     /// Tell the client about a new available track
     Announce {

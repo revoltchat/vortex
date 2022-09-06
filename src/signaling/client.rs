@@ -74,6 +74,7 @@ impl Client {
         write
             .send(PacketS2C::Accept {
                 available_tracks: self.room.get_available_tracks().await,
+                user_ids: self.room.get_user_ids(),
             })
             .await?;
 
@@ -112,6 +113,12 @@ impl Client {
                         }
 
                         write.send(PacketS2C::Remove { removed_tracks }).await?;
+                    }
+                    RoomEvent::UserJoin { user_id } => {
+                        write.send(PacketS2C::UserJoin { user_id }).await?;
+                    }
+                    RoomEvent::UserLeft { user_id } => {
+                        write.send(PacketS2C::UserLeft { user_id }).await?;
                     }
                 }
             }
