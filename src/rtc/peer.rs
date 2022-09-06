@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use dashmap::DashMap;
+use tokio::sync::Mutex;
 use webrtc::peer_connection::RTCPeerConnection;
 
 use crate::signaling::packets::{MediaType, ServerError};
@@ -19,7 +20,7 @@ mod monitor;
 mod negotiation;
 
 /// Map of media types to track IDs
-pub type PeerTrackMap = Arc<DashMap<MediaType, String>>;
+pub type PeerTrackMap = Arc<Mutex<HashMap<MediaType, String>>>;
 
 /// Abstraction of a WebRTC peer connection
 #[derive(Clone)]

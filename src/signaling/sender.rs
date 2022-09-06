@@ -28,6 +28,7 @@ impl Sender {
 
     /// Send a packet through the WebSocket
     pub async fn send(&self, packet: PacketS2C) -> Result<()> {
+        debug!("S->C: {:?}", packet);
         self.write
             .lock()
             .await

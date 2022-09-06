@@ -69,14 +69,16 @@ impl Room {
     }
 
     /// Get all currently availabe tracks which can be consumed
-    pub fn get_available_tracks(&self) -> Vec<RemoteTrack> {
+    pub async fn get_available_tracks(&self) -> Vec<RemoteTrack> {
         let mut tracks = vec![];
 
         for item in &self.user_tracks {
             let user_id = item.key();
-            tracks.extend(item.value().iter().map(|item| RemoteTrack {
-                id: item.value().to_owned(),
-                media_type: item.key().clone(),
+            let track_map = item.value().lock().await;
+
+            tracks.extend(track_map.iter().map(|(media_type, id)| RemoteTrack {
+                id: id.to_owned(),
+                media_type: media_type.clone(),
                 user_id: user_id.to_owned(),
             }));
         }
@@ -96,16 +98,20 @@ impl Room {
     }
 
     /// Remove a user from the room
-    pub fn remove_user(&self, id: &str) {
+    pub async fn remove_user(&self, id: &str) {
         // Find all associated track information
         if let Some((_, tracks)) = self.user_tracks.remove(id) {
+            let tracks = tracks.lock().await;
             let removed_tracks = tracks
                 .iter()
-                .map(|item| item.value().to_owned())
+                .map(|(_, id)| id.to_owned())
                 .collect::<Vec<String>>();
 
+            // Release Mutex lock
+            drop(tracks);
+
             for id in &removed_tracks {
-                self.tracks.remove(id);
+                self.close_track(id);
             }
 
             self.publish(RoomEvent::RemoveTrack { removed_tracks });
@@ -135,5 +141,22 @@ impl Room {
     /// Get a local track
     pub fn get_track(&self, id: &str) -> Option<Arc<TrackLocalStaticRTP>> {
         self.tracks.get(id).map(|value| value.clone())
+    }
+
+    /// Remove a local track
+    pub fn remove_track(&self, id: String) {
+        self.close_track(&id);
+
+        self.publish(RoomEvent::RemoveTrack {
+            removed_tracks: vec![id],
+        });
+    }
+
+    /// Close local track
+    fn close_track(&self, id: &str) {
+        info!("Track {id} has been removed");
+        self.tracks.remove(id);
+
+        // TODO: stop the RTP sender thread and drop
     }
 }

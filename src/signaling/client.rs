@@ -73,7 +73,7 @@ impl Client {
         debug!("Announcing current state to client");
         write
             .send(PacketS2C::Accept {
-                available_tracks: self.room.get_available_tracks(),
+                available_tracks: self.room.get_available_tracks().await,
             })
             .await?;
 
@@ -135,12 +135,13 @@ impl Client {
     /// closing the peer connection and removing tracks.
     pub async fn lifecycle_clean_up(&mut self) -> Result<()> {
         info!("User {} disconnected", self.user.id);
-        self.room.remove_user(&self.user.id);
+        self.room.remove_user(&self.user.id).await;
         self.peer.as_ref().unwrap().clean_up().await
     }
 
     /// Handle incoming packet
     async fn handle_message(&self, packet: PacketC2S, write: &Sender) -> Result<()> {
+        debug!("C->S: {:?}", packet);
         let peer = self.peer.as_ref().unwrap();
 
         match packet {
@@ -156,25 +157,27 @@ impl Client {
 
                 // Register audio track
                 if let Some(id) = audio {
-                    peer.register_track(id.to_owned(), MediaType::Audio)?;
+                    peer.register_track(id.to_owned(), MediaType::Audio).await?;
                     tracks.push(id);
                 }
 
                 // Register video track
                 if let Some(id) = video {
-                    peer.register_track(id.to_owned(), MediaType::Video)?;
+                    peer.register_track(id.to_owned(), MediaType::Video).await?;
                     tracks.push(id);
                 }
 
                 // Register screenshare audio track
                 if let Some(id) = screen_audio {
-                    peer.register_track(id.to_owned(), MediaType::ScreenAudio)?;
+                    peer.register_track(id.to_owned(), MediaType::ScreenAudio)
+                        .await?;
                     tracks.push(id);
                 }
 
                 // Register screenshare video track
                 if let Some(id) = screen_video {
-                    peer.register_track(id.to_owned(), MediaType::ScreenVideo)?;
+                    peer.register_track(id.to_owned(), MediaType::ScreenVideo)
+                        .await?;
                     tracks.push(id);
                 }
 
@@ -189,7 +192,12 @@ impl Client {
                 Ok(())
             }
             PacketC2S::Remove { removed_tracks } => {
-                todo!()
+                for id in removed_tracks {
+                    peer.unregister_track(&id).await;
+                    self.room.remove_track(id);
+                }
+
+                Ok(())
             }
             PacketC2S::Negotiation(negotiation) => {
                 match negotiation {

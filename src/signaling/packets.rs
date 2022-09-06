@@ -58,18 +58,33 @@ pub enum Negotiation {
 #[serde(tag = "type")]
 pub enum PacketC2S {
     /// Connect to a given room
-    Connect { room_id: String, token: String },
+    Connect {
+        // Room ID
+        room_id: String,
+        /// Authentication token
+        token: String,
+    },
     /// Give the server track IDs of the type of media we want to start producing
     RequestTrack {
+        /// Request a new audio track
         audio: Option<String>,
+        /// Request a new video track
         video: Option<String>,
+        /// Request a new screenshare audio track
         screen_audio: Option<String>,
+        /// Request a new screenshare video track
         screen_video: Option<String>,
     },
     /// Tell the server to send tracks
-    Continue { tracks: Vec<String> },
+    Continue {
+        /// IDs of tracks the client wants
+        tracks: Vec<String>,
+    },
     /// Tell the server certain tracks are no longer available
-    Remove { removed_tracks: Vec<String> },
+    Remove {
+        /// IDs of tracks the client is no longer producing
+        removed_tracks: Vec<String>,
+    },
     /// Negotiation
     Negotiation(Negotiation),
 }
@@ -84,13 +99,32 @@ pub enum PacketS2C {
         available_tracks: Vec<RemoteTrack>,
     },
     /// Tell the client about a new available track
-    Announce { track: RemoteTrack },
+    Announce {
+        /// Newly created remote track
+        track: RemoteTrack,
+    },
     /// Tell the client to send tracks
-    Continue { tracks: Vec<String> },
+    Continue {
+        /// IDs of tracks the server wants
+        tracks: Vec<String>,
+    },
     /// Tell the client certain tracks are no longer available
-    Remove { removed_tracks: Vec<String> },
+    Remove {
+        /// IDs of tracks that are no longer being produced
+        removed_tracks: Vec<String>,
+    },
     /// Negotiation
     Negotiation(Negotiation),
+    /// User joined the room
+    UserJoin {
+        /// ID of new user
+        user_id: String,
+    },
+    /// User left the room
+    UserLeft {
+        /// ID of leaving user
+        user_id: String,
+    },
     /// Disconnection error
     Error { error: String },
 }

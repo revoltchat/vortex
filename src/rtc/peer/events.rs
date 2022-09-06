@@ -1,7 +1,4 @@
-use std::{
-    sync::{atomic::Ordering, Arc},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use webrtc::{
@@ -21,13 +18,20 @@ use super::Peer;
 
 impl Peer {
     /// Register a new track that the client wants to provide
-    pub fn register_track(&self, id: String, media_type: MediaType) -> Result<()> {
-        if self.track_map.contains_key(&media_type) {
+    pub async fn register_track(&self, id: String, media_type: MediaType) -> Result<()> {
+        let mut track_map = self.track_map.lock().await;
+        if track_map.contains_key(&media_type) {
             return Err(ServerError::MediaTypeSatisfied.into());
         } else {
-            self.track_map.insert(media_type, id);
+            track_map.insert(media_type, id);
             Ok(())
         }
+    }
+
+    /// Unregister an existing track in order to remove it
+    pub async fn unregister_track(&self, id: &str) {
+        let mut track_map = self.track_map.lock().await;
+        track_map.retain(|_, item| item != id);
     }
 
     /// Register event handlers
@@ -83,11 +87,16 @@ impl Peer {
                             // Verify this is a track we are expecting to receive
                             let id = track.id().await;
 
-                            if let Some(item) =
-                                peer.track_map.iter().find(|item| item.value() == &id)
-                            {
-                                let media_type = item.key();
+                            // Find the media type
+                            let track_map = peer.track_map.lock().await;
+                            let item = track_map.iter().find(|(_, item_id)| item_id == &&id).map(|(media_type, _)| media_type.to_owned());
 
+                            // Release Mutex lock
+                            drop(track_map);
+
+                            if let Some(media_type) =
+                                item
+                            {
                                 if let MediaType::Video = media_type {
                                     // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
                                     // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
