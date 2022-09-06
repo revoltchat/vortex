@@ -1,7 +1,10 @@
 use anyhow::Result;
 use thiserror::Error;
 use tokio_tungstenite::tungstenite::Message;
-use webrtc::peer_connection::sdp::session_description::RTCSessionDescription;
+use webrtc::{
+    ice_transport::ice_candidate::RTCIceCandidateInit,
+    peer_connection::sdp::session_description::RTCSessionDescription,
+};
 
 /// Available types of media tracks
 #[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize)]
@@ -27,6 +30,29 @@ pub struct RemoteTrack {
     pub media_type: MediaType,
 }
 
+/// Browser compliant ICE candidate
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ICECandidate {
+    pub candidate: String,
+    #[serde(default)]
+    pub sdp_mid: String,
+    #[serde(default)]
+    pub sdp_mline_index: u16,
+    #[serde(default)]
+    pub username_fragment: String,
+}
+
+/// Either description or ICE candidate
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Negotiation {
+    /// Session Description
+    SDP { description: RTCSessionDescription },
+    /// ICE Candidate
+    ICE { candidate: ICECandidate },
+}
+
 /// Packet sent from the client to the server
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
@@ -45,7 +71,7 @@ pub enum PacketC2S {
     /// Tell the server certain tracks are no longer available
     Remove { removed_tracks: Vec<String> },
     /// Negotiation
-    Negotiation { sdp: Option<RTCSessionDescription> },
+    Negotiation(Negotiation),
 }
 
 /// Packet sent from the server to the client
@@ -64,7 +90,7 @@ pub enum PacketS2C {
     /// Tell the client certain tracks are no longer available
     Remove { removed_tracks: Vec<String> },
     /// Negotiation
-    Negotiation { sdp: Option<RTCSessionDescription> },
+    Negotiation(Negotiation),
     /// Disconnection error
     Error { error: String },
 }
@@ -105,5 +131,41 @@ impl PacketC2S {
         } else {
             None
         })
+    }
+}
+
+impl From<RTCIceCandidateInit> for ICECandidate {
+    fn from(candidate: RTCIceCandidateInit) -> Self {
+        let RTCIceCandidateInit {
+            candidate,
+            sdp_mid,
+            sdp_mline_index,
+            username_fragment,
+        } = candidate;
+
+        Self {
+            candidate,
+            sdp_mid,
+            sdp_mline_index,
+            username_fragment,
+        }
+    }
+}
+
+impl From<ICECandidate> for RTCIceCandidateInit {
+    fn from(candidate: ICECandidate) -> Self {
+        let ICECandidate {
+            candidate,
+            sdp_mid,
+            sdp_mline_index,
+            username_fragment,
+        } = candidate;
+
+        Self {
+            candidate,
+            sdp_mid,
+            sdp_mline_index,
+            username_fragment,
+        }
     }
 }

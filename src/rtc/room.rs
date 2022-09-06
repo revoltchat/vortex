@@ -97,8 +97,6 @@ impl Room {
 
     /// Remove a user from the room
     pub fn remove_user(&self, id: &str) {
-        dbg!(&self.user_tracks.get(id));
-
         // Find all associated track information
         if let Some((_, tracks)) = self.user_tracks.remove(id) {
             let removed_tracks = tracks

@@ -7,16 +7,13 @@ use futures::{
 };
 use postage::stream::Stream;
 
-use crate::{
-    rtc::{
-        peer::Peer,
-        room::{Room, RoomEvent},
-    },
-    signaling::packets::RemoteTrack,
+use crate::rtc::{
+    peer::Peer,
+    room::{Room, RoomEvent},
 };
 
 use super::{
-    packets::{MediaType, PacketC2S, PacketS2C, ServerError},
+    packets::{MediaType, Negotiation, PacketC2S, PacketS2C, ServerError},
     sender::{ReadWritePair, Sender},
     server::UserInformation,
 };
@@ -44,7 +41,18 @@ impl Client {
     /// Run client lifecycle
     pub async fn run(mut self, stream: ReadWritePair) -> Result<()> {
         // Initialise the peer
-        self.peer = Some(Peer::new(self.user.id.to_owned(), self.room.clone()).await?);
+        let sender = stream.1.clone();
+        self.peer = Some(
+            Peer::new(
+                self.user.id.to_owned(),
+                self.room.clone(),
+                Box::new(move |negotiation| {
+                    let sender = sender.clone();
+                    Box::pin(async move { sender.send(PacketS2C::Negotiation(negotiation)).await })
+                }),
+            )
+            .await?,
+        );
 
         // Start working
         let result = self.lifecycle_listen(stream).await;
@@ -99,6 +107,10 @@ impl Client {
                         write.send(PacketS2C::Announce { track }).await?;
                     }
                     RoomEvent::RemoveTrack { removed_tracks } => {
+                        for track in &removed_tracks {
+                            self.peer.as_ref().unwrap().remove_track(track).await?;
+                        }
+
                         write.send(PacketS2C::Remove { removed_tracks }).await?;
                     }
                 }
@@ -179,13 +191,14 @@ impl Client {
             PacketC2S::Remove { removed_tracks } => {
                 todo!()
             }
-            PacketC2S::Negotiation { sdp } => {
-                if let Some(sdp) = sdp {
-                    write
-                        .send(PacketS2C::Negotiation {
-                            sdp: Some(peer.set_remote_description(sdp).await?),
-                        })
-                        .await?;
+            PacketC2S::Negotiation(negotiation) => {
+                match negotiation {
+                    Negotiation::SDP { description } => {
+                        peer.consume_sdp(description).await?;
+                    }
+                    Negotiation::ICE { candidate } => {
+                        peer.consume_ice(candidate.into()).await?;
+                    }
                 }
 
                 Ok(())

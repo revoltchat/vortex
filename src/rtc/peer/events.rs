@@ -1,4 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 
 use anyhow::Result;
 use webrtc::{
@@ -12,7 +15,7 @@ use webrtc::{
     Error,
 };
 
-use crate::signaling::packets::{MediaType, ServerError};
+use crate::signaling::packets::{MediaType, Negotiation, ServerError};
 
 use super::Peer;
 
@@ -40,10 +43,32 @@ impl Peer {
             .await;
 
         // Monitor negotiation state
+        let peer_negotiation = peer.clone();
         self.connection
             .on_negotiation_needed(Box::new(move || {
-                debug!("We need to negotiate");
-                Box::pin(async {})
+                let peer_negotiation = peer_negotiation.clone();
+                Box::pin(async move {
+                    peer_negotiation.renegotiate().await;
+                })
+            }))
+            .await;
+
+        // Catch any new ICE candidates
+        let peer_ice = peer.clone();
+        self.connection
+            .on_ice_candidate(Box::new(move |candidate| {
+                let negotiation_fn = peer_ice.negotation_fn.clone();
+                Box::pin(async move {
+                    if let Some(candidate) = candidate {
+                        if let Ok(candidate) = candidate.to_json().await {
+                            (negotiation_fn)(Negotiation::ICE {
+                                candidate: candidate.into(),
+                            })
+                            .await
+                            .ok();
+                        }
+                    }
+                })
             }))
             .await;
 
@@ -70,7 +95,9 @@ impl Peer {
                                     tokio::spawn(async move {
                                         let mut result = Result::<usize>::Ok(0);
                                         while result.is_ok() {
-                                            let timeout = tokio::time::sleep(Duration::from_secs(3));
+                                            // TODO: figure out a good interval
+                                            // or catch PLI in the other direction
+                                            let timeout = tokio::time::sleep(Duration::from_secs(1));
                                             tokio::pin!(timeout);
 
                                             // TODO: need to kill this
@@ -88,16 +115,12 @@ impl Peer {
                                     });
                                 }
 
-                                // TODO: initialise the track and add it to the room
-
                                 // Create track that we send video back through
                                 let local_track = Arc::new(TrackLocalStaticRTP::new(
                                     track.codec().await.capability,
                                     id.to_owned(),
                                     format!("{media_type}:{id}"),
                                 ));
-
-                                // TODO: announce new track to the room
 
                                 // Send to other peers
                                 peer.room.add_track(
