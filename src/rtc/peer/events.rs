@@ -110,15 +110,13 @@ impl Peer {
                                 // Release Mutex lock
                                 drop(track_map);
 
-                                if let MediaType::Video = media_type {
+                                if matches!(media_type, MediaType::Video | MediaType::ScreenVideo) {
                                     // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
                                     // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
                                     let media_ssrc = track.ssrc();
                                     tokio::spawn(async move {
                                         let mut result = Result::<usize>::Ok(0);
                                         while result.is_ok() {
-                                            // TODO: figure out a good interval
-                                            // or catch PLI in the other direction
                                             let timeout = tokio::time::sleep(Duration::from_secs(1));
                                             tokio::pin!(timeout);
 
