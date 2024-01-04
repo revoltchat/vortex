@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
-use mediasoup::data_structures::TransportProtocol;
 use mediasoup::prelude::*;
 use mediasoup::sctp_parameters::SctpParameters;
 use mediasoup::srtp_parameters::SrtpParameters;
@@ -41,7 +40,7 @@ pub enum TransportInitData {
     CombinedRtp {
         ip: IpAddr,
         port: u16,
-        protocol: TransportProtocol,
+        protocol: Protocol,
         id: TransportId,
         srtp_crypto_suite: SrtpCryptoSuite,
     },

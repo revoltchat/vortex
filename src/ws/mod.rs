@@ -110,7 +110,7 @@ async fn handle(
                                 )
                                 .await?;
                             break rtc_state;
-                        },
+                        }
                         WSCommandType::RoomInfo => room_info(out, &room, ws_sink).await?,
                         _ => return Err(WSCloseType::InvalidState),
                     }
@@ -171,9 +171,10 @@ async fn event_loop(
                                     .await
                                     .ok_or_else(|| WSCloseType::ServerError)?;
 
-                                let result = rtc_state.start_produce(produce_type, rtp_parameters.clone()).await;
+                                let result = rtc_state.start_produce(produce_type, rtp_parameters.clone()).await.ok();
+
                                 match result {
-                                    Ok(producer) => {
+                                    Some(producer) => {
                                         let producer_id = producer.id();
                                         let mut mut_user = user.write().await;
                                         mut_user.set_producer(*produce_type, Some(producer)).ok();
@@ -183,8 +184,8 @@ async fn event_loop(
                                             WSReplyType::StartProduce { producer_id }.to_message(out.id)?
                                         ).await?;
                                     },
-                                    Err(err) => {
-                                        error!("Error while trying to start produce for user {}: {:?}", user_id, err);
+                                    None => {
+                                        error!("Error while trying to start produce for user {}", user_id);
                                         ws_sink.send(
                                             WSErrorType::ProducerFailure.to_message(out)?
                                         ).await?;
@@ -221,9 +222,10 @@ async fn event_loop(
                                         match producing_user.get_producer(*produce_type) {
                                             Some(producer) => {
                                                 let router = room.router().ok_or_else(|| WSCloseType::ServerError)?;
+
                                                 if router.can_consume(&producer.id(), rtc_state.rtp_capabilities()) {
-                                                    match rtc_state.start_consume(producer.id()).await {
-                                                        Ok(consumer) => ws_sink.send(
+                                                    match rtc_state.start_consume(producer.id()).await.ok() {
+                                                        Some(consumer) => ws_sink.send(
                                                             WSReplyType::StartConsume {
                                                                 id: consumer.id(),
                                                                 producer_id: consumer.producer_id(),
@@ -231,8 +233,8 @@ async fn event_loop(
                                                                 rtp_parameters: consumer.rtp_parameters().clone(),
                                                             }.to_message(out.id)?
                                                         ).await?,
-                                                        Err(err) => {
-                                                            error!("Error while trying to start produce: {:?}", err);
+                                                        None => {
+                                                            error!("Error while trying to start produce");
                                                             ws_sink.send(
                                                                 WSErrorType::ProducerFailure.to_message(out)?
                                                             ).await?;
@@ -329,7 +331,11 @@ async fn event_loop(
     }
 }
 
-async fn room_info(c: WSCommand, room: &Arc<Room>, ws_sink: &mut SplitSink<WebSocket, Message>) -> Result<(), WSCloseType> {
+async fn room_info(
+    c: WSCommand,
+    room: &Arc<Room>,
+    ws_sink: &mut SplitSink<WebSocket, Message>,
+) -> Result<(), WSCloseType> {
     let users = room.users();
     let guard = users.guard().await;
     let mut user_info: HashMap<String, UserInfo> = HashMap::new();
@@ -338,12 +344,15 @@ async fn room_info(c: WSCommand, room: &Arc<Room>, ws_sink: &mut SplitSink<WebSo
         user_info.insert(user.id().to_string(), user.into_info());
     }
 
-    ws_sink.send(
-        WSReplyType::RoomInfo {
-            id: room.id().to_string(),
-            video_allowed: false,
-            users: user_info,
-        }.to_message(c.id)?
-    ).await?;
+    ws_sink
+        .send(
+            WSReplyType::RoomInfo {
+                id: room.id().to_string(),
+                video_allowed: false,
+                users: user_info,
+            }
+            .to_message(c.id)?,
+        )
+        .await?;
     Ok(())
 }

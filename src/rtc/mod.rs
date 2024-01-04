@@ -3,7 +3,6 @@ use std::num::{NonZeroU32, NonZeroU8};
 
 use crate::state::user::ProduceType;
 use crate::util::variables::{DISABLE_RTP, RTC_IPS};
-use futures::join;
 use mediasoup::prelude::*;
 
 pub mod types;
@@ -44,11 +43,17 @@ impl RtcState {
 
         let transport_mode = match init_data.mode {
             InitializationInputMode::SplitWebRtc => {
-                let (send, recv) = join!(
-                    router.create_webrtc_transport(webrtc_options.clone()),
-                    router.create_webrtc_transport(webrtc_options)
-                );
-                TransportMode::SplitWebRtc(send.map_err(|_| ())?, recv.map_err(|_| ())?)
+                let send = router
+                    .create_webrtc_transport(webrtc_options.clone())
+                    .await
+                    .map_err(|_| ());
+
+                let recv = router
+                    .create_webrtc_transport(webrtc_options)
+                    .await
+                    .map_err(|_| ());
+
+                TransportMode::SplitWebRtc(send?, recv?)
             }
             InitializationInputMode::CombinedWebRtc => {
                 let transport = router.create_webrtc_transport(webrtc_options).await;
