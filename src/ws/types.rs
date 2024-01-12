@@ -19,6 +19,8 @@ pub struct WSCommand {
 #[derive(Deserialize, IntoStaticStr)]
 #[serde(tag = "type", content = "data")]
 pub enum WSCommandType {
+    Ping,
+
     #[serde(rename_all = "camelCase")]
     Authenticate {
         room_id: String,

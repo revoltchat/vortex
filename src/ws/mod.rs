@@ -77,6 +77,7 @@ async fn handle(
                             )
                             .await?;
                         break (room, id);
+                    } else if let WSCommandType::Ping = out.command_type {
                     } else {
                         return Err(WSCloseType::InvalidState);
                     }
@@ -96,6 +97,7 @@ async fn handle(
                 if let Ok(text) = message.to_str() {
                     let out: WSCommand = serde_json::from_str(text)?;
                     match out.command_type {
+                        WSCommandType::Ping => {}
                         WSCommandType::InitializeTransports { init_data } => {
                             let router = room.router().ok_or(WSCloseType::RoomClosed)?;
                             let rtc_state = RtcState::initialize(router, init_data)
@@ -151,6 +153,7 @@ async fn event_loop(
                     if let Ok(text) = message.to_str() {
                         let out: WSCommand = serde_json::from_str(text)?;
                         match &out.command_type {
+                            WSCommandType::Ping => {},
                             WSCommandType::ConnectTransport { connect_data } => {
                                 let result = rtc_state.connect_transport(connect_data).await;
                                 if let Ok(_) = result {
